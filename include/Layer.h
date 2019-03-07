@@ -13,16 +13,21 @@ class Layer {
 	private:
 		std::vector<Neuron *> m_Neurons;
 		NeuralNetwork *m_Network;
-		Layer *m_NextLayer;
+		Layer *m_NextLayer = NULL;
+		Layer *m_PreviousLayer = NULL;
 
 	public:
 		Layer();
 		Layer(NeuralNetwork *network, int numNeurons);
 		void setOutputLayer(Layer *layer);
-		void invalidateMemos();
+		bool isOutputLayer();
+		void setPreviousLayer(Layer *previous);
+		Layer *getPreviousLayer();
 		std::vector<Neuron *> getNeurons();
 		Layer *getNextLayer();
 		NeuralNetwork *getNeuralNetwork();
+		void updateError(std::vector<float> *expectedValues);
+		void applyWeights(std::vector<float> *input);
 };
 
 

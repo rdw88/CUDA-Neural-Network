@@ -29,7 +29,10 @@ class Neuron {
 		void setValue(float value);
 		void resetMemo();
 		bool isInputNeuron();
-
+		bool isOutputNeuron();
+		void updateError(float expectedValue);
+		void applyWeights(std::vector<float> *input);
+		float getError();
 };
 
 

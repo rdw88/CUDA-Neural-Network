@@ -5,6 +5,9 @@
 #include "Layer.h"
 
 
+#define LEARNING_RATE 0.1f
+
+
 class NeuralNetwork {
 	private:
 		Layer *m_InputLayer;
@@ -14,8 +17,10 @@ class NeuralNetwork {
 		NeuralNetwork(int numInputNeurons, int numHiddenLayers, int neuronsPerHiddenLayer, int numOutputNeurons);
 		Layer *getInputLayer();
 		Layer *getOutputLayer();
-		void setInput(float input[]);
-		
+		void invalidateMemos();
+		void setInput(std::vector<float> *input);
+		std::vector<float> getOutput();
+		void train(std::vector<float> *input, std::vector<float> *expectedOutput);
 };
 
 

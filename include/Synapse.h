@@ -13,7 +13,9 @@ class Synapse {
 		Synapse();
 		Synapse(Neuron *inputNeuron, Neuron *outputNeuron);
 		float getWeight();
+		void setWeight(float weight);
 		Neuron *getInputNeuron();
+		Neuron *getOutputNeuron();
 };
 
 

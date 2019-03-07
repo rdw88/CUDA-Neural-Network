@@ -4,5 +4,8 @@
 
 float standardNormalRandom();
 
+float sigmoid(float x);
+
+float sigmoidDerivative(float x);
 
 #endif

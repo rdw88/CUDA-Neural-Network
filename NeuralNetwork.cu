@@ -7,6 +7,9 @@
 using namespace std;
 
 
+#define RUNS_PER_BATCH 9
+
+
 NeuralNetwork::NeuralNetwork() {
 }
 
@@ -44,24 +47,71 @@ Layer *NeuralNetwork::getOutputLayer() {
 }
 
 
-void NeuralNetwork::setInput(float input[]) {
-	vector<Neuron *> neurons = m_InputLayer->getNeurons();
+void NeuralNetwork::invalidateMemos() {
+	Layer *layer = m_InputLayer;
 
-	for (int i = 0; i < neurons.size(); i++) {
-		neurons[i]->setValue(input[i]);
+	while (layer != NULL) {
+		std::vector<Neuron *> neurons = layer->getNeurons();
+
+		for (int i = 0; i < neurons.size(); i++) {
+			neurons[i]->resetMemo();
+		}
+
+		layer = layer->getNextLayer();
 	}
 }
 
 
-int main(void) {
-	NeuralNetwork network(2, 2, 2, 2);
+void NeuralNetwork::setInput(std::vector<float> *input) {
+	vector<Neuron *> neurons = m_InputLayer->getNeurons();
+	vector<float> inputValues = *input;
 
-	float input[] = { 0.2, 0.5 };
-	network.setInput(input);
-
-	vector<Neuron *> neurons = network.getOutputLayer()->getNeurons();
 	for (int i = 0; i < neurons.size(); i++) {
-		cout << "Output Neuron value: " << neurons[i]->getValue() << endl;
+		neurons[i]->setValue(inputValues[i]);
+	}
+
+	invalidateMemos();
+}
+
+
+vector<float> NeuralNetwork::getOutput() {
+	vector<Neuron *> neurons = getOutputLayer()->getNeurons();
+	vector<float> outputValues;
+
+	for (int i = 0; i < neurons.size(); i++) {
+		outputValues.push_back(neurons[i]->getValue());
+	}
+
+	return outputValues;
+}
+
+
+void NeuralNetwork::train(std::vector<float> *input, std::vector<float> *expectedOutput) {
+	setInput(input);
+	getOutputLayer()->updateError(expectedOutput);
+	getInputLayer()->applyWeights(input);
+}
+
+
+int main(void) {
+	NeuralNetwork network(768, 2, 350, 768);
+
+	vector<float> in(768);
+	for (int i = 0; i < 768; i++)
+		in[i] = sigmoid(standardNormalRandom());
+
+	vector<float> out;
+	out = in;
+
+	for (int i = 0; i < 100; i++) {
+		network.train(&in, &out);
+	}
+
+	vector<float> actualOutput = network.getOutput();
+
+	for (int i = 0; i < actualOutput.size(); i++) {
+		cout << in[i] << endl;
+		cout << actualOutput[i] << endl;
 	}
 
   	return 0;

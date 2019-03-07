@@ -18,8 +18,6 @@ Neuron::Neuron() {
 
 Neuron::Neuron(Layer *layer) {
 	m_Bias = standardNormalRandom();
-	m_InputSynapses = std::vector<Synapse *>();
-	m_OutputSynapses = std::vector<Synapse *>();
 	m_Layer = layer;
 }
 
@@ -48,35 +46,66 @@ float Neuron::getValue() {
 		return m_Memo;
 	}
 
-	thrust::host_vector<float> hostWeights;
-	thrust::host_vector<float> hostValues;
+	float value = m_Bias;
 
 	for (int i = 0; i < m_InputSynapses.size(); i++) {
-		hostWeights.push_back(m_InputSynapses[i]->getWeight());
-		hostValues.push_back(m_InputSynapses[i]->getInputNeuron()->getValue());
+		value += (m_InputSynapses[i]->getWeight() * m_InputSynapses[i]->getInputNeuron()->getValue());
 	}
 
-	thrust::device_vector<float> deviceWeights = hostWeights;
-	thrust::device_vector<float> deviceValues = hostValues;
-
-	float value = thrust::inner_product(deviceValues.begin(), deviceValues.end(), deviceWeights.begin(), 0.0f) + m_Bias;
+	value = sigmoid(value);
 	m_Memo = value;
-
 	return value;
+}
+
+
+void Neuron::updateError(float expectedValue) {
+	float value = getValue();
+
+	if (isOutputNeuron()) {
+		m_Error = (expectedValue - value) * sigmoidDerivative(value);
+		return;
+	}
+
+	float error = 0.0f;
+	for (int i = 0; i < m_OutputSynapses.size(); i++) {
+		error += (m_OutputSynapses[i]->getWeight() * m_OutputSynapses[i]->getOutputNeuron()->getError());
+	}
+
+	m_Error = error * sigmoidDerivative(value);
+}
+
+
+void Neuron::applyWeights(std::vector<float> *input) {
+	for (int i = 0; i < m_InputSynapses.size(); i++) {
+		float newWeight = m_InputSynapses[i]->getWeight() + (LEARNING_RATE * m_Error * (* input)[i]);
+		m_InputSynapses[i]->setWeight(newWeight);
+	}
+
+	m_Bias += (LEARNING_RATE * m_Error);
+	resetMemo();
 }
 
 
 void Neuron::setValue(float value) {
 	m_Value = value;
-	m_Layer->invalidateMemos();
 }
 
 
 bool Neuron::isInputNeuron() {
-	return m_InputSynapses.size() == 0;//m_Layer->getNeuralNetwork()->getInputLayer() == m_Layer;
+	return m_InputSynapses.size() == 0;
+}
+
+
+bool Neuron::isOutputNeuron() {
+	return m_OutputSynapses.size() == 0;
 }
 
 
 void Neuron::resetMemo() {
 	m_Memo = -1;
+}
+
+
+float Neuron::getError() {
+	return m_Error;
 }

@@ -22,6 +22,16 @@ float Synapse::getWeight() {
 }
 
 
+void Synapse::setWeight(float weight) {
+	m_Weight = weight;
+}
+
+
 Neuron *Synapse::getInputNeuron() {
 	return m_InputNeuron;
+}
+
+
+Neuron *Synapse::getOutputNeuron() {
+	return m_OutputNeuron;
 }

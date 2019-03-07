@@ -10,7 +10,6 @@ Layer::Layer() {
 
 Layer::Layer(NeuralNetwork *network, int numNeurons) {
 	m_Network = network;
-	m_Neurons = std::vector<Neuron *>();
 
 	for (int i = 0; i < numNeurons; i++) {
 		Neuron *neuron = new Neuron(this);
@@ -25,20 +24,37 @@ void Layer::setOutputLayer(Layer *outputLayer) {
 	}
 
 	m_NextLayer = outputLayer;
+	outputLayer->setPreviousLayer(this);
 }
 
 
-void Layer::invalidateMemos() {
-	Layer *layer = m_Network->getInputLayer();
+void Layer::updateError(std::vector<float> *expectedValues) {
+	for (int i = 0; i < m_Neurons.size(); i++) {
+		if (isOutputLayer())
+			m_Neurons[i]->updateError((* expectedValues)[i]);
+		else
+			m_Neurons[i]->updateError(0.0f);
+	}
 
-	while (layer != NULL) {
-		std::vector<Neuron *> neurons = layer->getNeurons();
+	if (m_PreviousLayer != NULL) {
+		m_PreviousLayer->updateError(expectedValues);
+	}
+}
 
-		for (int i = 0; i < neurons.size(); i++) {
-			neurons[i]->resetMemo();
+
+void Layer::applyWeights(std::vector<float> *input) {
+	for (int i = 0; i < m_Neurons.size(); i++) {
+		m_Neurons[i]->applyWeights(input);
+	}
+
+	if (m_NextLayer != NULL) {
+		std::vector<float> neuronValues;
+
+		for (int i = 0; i < m_Neurons.size(); i++) {
+			neuronValues.push_back(m_Neurons[i]->getValue());
 		}
 
-		layer = layer->getNextLayer();
+		m_NextLayer->applyWeights(&neuronValues);
 	}
 }
 
@@ -55,4 +71,19 @@ Layer *Layer::getNextLayer() {
 
 NeuralNetwork *Layer::getNeuralNetwork() {
 	return m_Network;
+}
+
+
+bool Layer::isOutputLayer() {
+	return m_NextLayer == NULL;
+}
+
+
+void Layer::setPreviousLayer(Layer *previous) {
+	m_PreviousLayer = previous;
+}
+
+
+Layer *Layer::getPreviousLayer() {
+	return m_PreviousLayer;
 }
