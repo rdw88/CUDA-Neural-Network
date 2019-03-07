@@ -103,15 +103,8 @@ int main(void) {
 	vector<float> out;
 	out = in;
 
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < 1000; i++) {
 		network.train(&in, &out);
-	}
-
-	vector<float> actualOutput = network.getOutput();
-
-	for (int i = 0; i < actualOutput.size(); i++) {
-		cout << in[i] << endl;
-		cout << actualOutput[i] << endl;
 	}
 
   	return 0;
