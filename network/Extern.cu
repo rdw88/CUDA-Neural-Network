@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 
 
 NeuralNetwork *getNetworkPointer(void *pointer) {
@@ -22,7 +23,7 @@ extern "C" __declspec(dllexport) void *createNetwork(int numInputNeurons, int nu
 
 
 
-extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input, size_t inputSize, float *expectedOutput, size_t outputSize) {
+extern "C" __declspec(dllexport) void batchTrainNetwork(void *_network, float *input, size_t inputSize, float *expectedOutput, size_t outputSize, size_t trainingsPerBatch) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 
 	std::vector<float> networkInput;
@@ -35,15 +36,20 @@ extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input,
 		networkOutput.push_back(expectedOutput[i]);
 	}
 
-	//network->train(&networkInput, &networkOutput);
+	network->batchTrain(&networkInput, &networkOutput, trainingsPerBatch);
 }
 
 
 
-extern "C" __declspec(dllexport) void getNetworkOutput(void *_network, float *output, size_t outputSize) {
+extern "C" __declspec(dllexport) void getNetworkOutputForInput(void *_network, float *input, size_t inputSize, float *output, size_t outputSize) {
 	NeuralNetwork *network = getNetworkPointer(_network);
-/*
-	std::vector<float> networkOutput = network->getOutput();
+
+	std::vector<float> networkInput;
+	for (int i = 0; i < inputSize; i++) {
+		networkInput.push_back(input[i]);
+	}
+
+	std::vector<float> networkOutput = network->getOutputForInput(&networkInput);
 	if (networkOutput.size() != outputSize) {
 		std::cout << "ERROR: Expected output size of " << networkOutput.size() << " but got " << outputSize << std::endl;
 		return;
@@ -52,5 +58,37 @@ extern "C" __declspec(dllexport) void getNetworkOutput(void *_network, float *ou
 	for (int i = 0; i < networkOutput.size(); i++) {
 		output[i] = networkOutput[i];
 	}
-	*/
+}
+
+
+
+extern "C" __declspec(dllexport) void saveNetwork(void *_network, char *filename, size_t filenameSize) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	if (filename == NULL) {
+		std::cout << "ERROR: Filename is null!" << std::endl;
+		return;
+	}
+
+	std::string file(filename, filenameSize);
+	network->save(file);
+}
+
+
+
+extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filenameSize) {
+	if (filename == NULL) {
+		std::cout << "ERROR: Filename is null!" << std::endl;
+		return NULL;
+	}
+
+	std::string file(filename, filenameSize);
+	
+	NeuralNetwork *network = networkFromFile(file);
+	if (network == NULL) {
+		std::cout << "Failed to load network from file!" << std::endl;
+		return NULL;
+	}
+
+	return (void *) network;
 }

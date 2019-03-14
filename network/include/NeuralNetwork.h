@@ -24,11 +24,13 @@ class NeuralNetwork {
 		std::vector<float *> runTraining(std::vector<float> *batch, std::vector<std::vector<float *>> *layerResults, unsigned int trainingsPerBatch);
 		std::vector<float> getOutputForInput(std::vector<float> *input);
 		void save(std::string filename);
-		NeuralNetwork *networkFromFile(std::string filename);
 		float getLearningRate();
 		Layer *getInputLayer();
 		Layer *getOutputLayer();
 };
+
+
+NeuralNetwork *networkFromFile(std::string filename);
 
 
 #endif

@@ -16,6 +16,8 @@ NeuralNetwork::NeuralNetwork() {
 
 
 NeuralNetwork::NeuralNetwork(int numInputNeurons, int numHiddenLayers, int neuronsPerHiddenLayer, int numOutputNeurons, float learningRate) {
+	createCublasContext();
+
 	Layer *inputLayer = new Layer(this, numInputNeurons);
 	Layer *previousLayer = inputLayer;
 
@@ -364,3 +366,74 @@ NeuralNetwork *networkFromFile(string filename) {
 float NeuralNetwork::getLearningRate() {
 	return m_LearningRate;
 }
+
+
+/*int main(void) {
+	createCublasContext();
+
+	unsigned int numBatches = 3200;
+	unsigned int trainingsPerBatch = 32;
+	unsigned int numInputNeurons = 10;
+
+	//NeuralNetwork network(numInputNeurons, 2, 5, 10, 0.1f);
+	
+	vector<vector<float>> inputBatches;
+	vector<vector<float>> outputBatches;
+	for (int i = 0; i < numBatches; i++) {
+		vector<float> inputBatch;
+		vector<float> outputBatch;
+
+		for (int k = 0; k < trainingsPerBatch; k++) {
+			inputBatch.push_back(0.15);
+			inputBatch.push_back(0.45);
+			inputBatch.push_back(0.78);
+			inputBatch.push_back(0.04);
+			inputBatch.push_back(0.45);
+			inputBatch.push_back(0.73);
+			inputBatch.push_back(0.19);
+			inputBatch.push_back(0.11);
+			inputBatch.push_back(0.01);
+			inputBatch.push_back(0.11);
+
+			outputBatch.push_back(0.3);
+			outputBatch.push_back(0.7);
+			outputBatch.push_back(0.1);
+			outputBatch.push_back(0.0);
+			outputBatch.push_back(0.9);
+			outputBatch.push_back(0.9);
+			outputBatch.push_back(0.4);
+			outputBatch.push_back(0.6);
+			outputBatch.push_back(0.2);
+			outputBatch.push_back(0.1);
+		}
+
+		inputBatches.push_back(inputBatch);
+		outputBatches.push_back(outputBatch);
+	}
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < numBatches; i++) {
+		network.batchTrain(&inputBatches[i], &outputBatches[i], trainingsPerBatch);	
+	}
+
+	auto end = std::chrono::high_resolution_clock::now();
+	cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << endl;
+
+	NeuralNetwork *network = networkFromFile("archive/test.csv");
+
+	std::vector<float> inputVector = inputBatches[0];
+
+	std::vector<float> output = network->getOutputForInput(&inputVector);
+	cout << "Output: " << endl;
+
+	for (int i = 0; i < output.size(); i++) {
+		cout << output[i] << endl;
+	}
+
+	//network.save("archive/test.csv");
+
+	destroyCublasContext();
+
+  	return 0;
+}*/

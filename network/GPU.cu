@@ -93,3 +93,93 @@ void gpu_batchVectorMatrixMultiply(std::vector<float *> *matrices, std::vector<f
 	cudaFree(gpuVectorPointers);
 	cudaFree(gpuResultPointers);
 }
+
+
+/*
+int main(void) {
+	createCublasContext();
+
+	float matrix[] = {
+		1.0, 2.0, 7.0, 2.0, 5.0, 3.0
+	};
+
+	float vector1[] = {
+		1.0,
+		2.0
+	};
+
+	float vector2[] = {
+		3.0,
+		4.0
+	};
+
+	float bias[] {
+		5.0,
+		2.0,
+		3.0
+	};
+
+	float *cpuMatrix = (float *) malloc(6 * sizeof(float));
+	float *cpuVector1 = (float *) malloc(2 * sizeof(float));
+	float *cpuVector2 = (float *) malloc(2 * sizeof(float));
+	float *cpuBias = (float *) malloc(3 * sizeof(float));
+
+	memcpy(cpuMatrix, matrix, sizeof(float) * 6);
+	memcpy(cpuVector1, vector1, sizeof(float) * 2);
+	memcpy(cpuVector2, vector2, sizeof(float) * 2);
+	memcpy(cpuBias, bias, sizeof(float) * 3);
+
+	float *gpuMatrix = gpu_loadVectorFromPointer(cpuMatrix, 6);
+	float *gpuVector1 = gpu_loadVectorFromPointer(cpuVector1, 2);
+	float *gpuVector2 = gpu_loadVectorFromPointer(cpuVector2, 2);
+	float *gpuBias1 = gpu_loadVectorFromPointer(cpuBias, 3);
+	float *gpuBias2 = gpu_loadVectorFromPointer(cpuBias, 3);
+
+	std::vector<float *> matrices(2);
+	std::vector<float *> vectors(2);
+	std::vector<float *> results(2);
+
+	matrices[0] = gpuMatrix;
+	matrices[1] = gpuMatrix;
+	vectors[0] = gpuVector1;
+	vectors[1] = gpuVector2;
+	results[0] = gpuBias1;
+	results[1] = gpuBias2;
+
+	gpu_batchVectorMatrixMultiply(&matrices, &vectors, &results, 2, 3, 2);
+
+	float expected1[] = {
+		(matrix[0] * vector1[0]) + (matrix[3] * vector1[1]) + bias[0],
+		(matrix[1] * vector1[0]) + (matrix[4] * vector1[1]) + bias[1],
+		(matrix[2] * vector1[0]) + (matrix[5] * vector1[1]) + bias[2]
+	};
+
+	float expected2[] = {
+		(matrix[0] * vector2[0]) + (matrix[3] * vector2[1]) + bias[0],
+		(matrix[1] * vector2[0]) + (matrix[4] * vector2[1]) + bias[1],
+		(matrix[2] * vector2[0]) + (matrix[5] * vector2[1]) + bias[2]
+	};
+
+	float *cpuResult1 = gpu_unloadVector(gpuBias1, 3);
+	float *cpuResult2 = gpu_unloadVector(gpuBias2, 3);
+
+	std::cout << "verifying" << std::endl;
+
+	for (int i = 0; i < 3; i++) {
+		if (expected1[i] != cpuResult1[i]) {
+			std::cout << "Result 1: " << "(Expected: " << expected1[i] << ", Result: " << cpuResult1[i] << std::endl;
+		}
+	}
+
+	for (int i = 0; i < 3; i++) {
+		if (expected2[i] != cpuResult2[i]) {
+			std::cout << "Result 2: " << "(Expected: " << expected2[i] << ", Result: " << cpuResult2[i] << std::endl;
+		}
+	}
+
+	std::cout << "done!" << std::endl;
+
+	destroyCublasContext();
+
+	return 0;
+}*/
