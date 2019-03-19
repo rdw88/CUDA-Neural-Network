@@ -3,6 +3,8 @@
 
 float standardNormalRandom();
 
+float randomWeight(unsigned int previousLayerSize);
+
 float sigmoid(float x);
 
 float sigmoidDerivative(float x);

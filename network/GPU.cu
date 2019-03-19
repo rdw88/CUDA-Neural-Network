@@ -83,11 +83,11 @@ void gpu_batchVectorMatrixMultiply(std::vector<float *> *matrices, std::vector<f
 	const float *alphaRef = &alpha;
 	const float *betaRef = &beta;
 
-	int lda = numRows;
+	int lda = numColumns;
 	int ldb = numColumns;
 	int ldc = numRows;
 
-	cublasSgemmBatched(cublasContext, CUBLAS_OP_N, CUBLAS_OP_N, numRows, 1, numColumns, alphaRef, gpuMatrixPointers, lda, gpuVectorPointers, ldb, betaRef, gpuResultPointers, ldc, batches);
+	cublasSgemmBatched(cublasContext, CUBLAS_OP_T, CUBLAS_OP_N, numRows, 1, numColumns, alphaRef, gpuMatrixPointers, lda, gpuVectorPointers, ldb, betaRef, gpuResultPointers, ldc, batches);
 
 	cudaFree(gpuMatrixPointers);
 	cudaFree(gpuVectorPointers);
@@ -100,8 +100,14 @@ int main(void) {
 	createCublasContext();
 
 	float matrix[] = {
-		1.0, 2.0, 7.0, 2.0, 5.0, 3.0
+		1.0, 2.0,
+		2.0, 5.0,
+		7.0, 3.0
 	};
+
+	//float matrix[] = {
+//		1.0, 2.0, 7.0, 2.0, 5.0, 3.0
+//	};
 
 	float vector1[] = {
 		1.0,
@@ -166,15 +172,15 @@ int main(void) {
 	std::cout << "verifying" << std::endl;
 
 	for (int i = 0; i < 3; i++) {
-		if (expected1[i] != cpuResult1[i]) {
+		//if (expected1[i] != cpuResult1[i]) {
 			std::cout << "Result 1: " << "(Expected: " << expected1[i] << ", Result: " << cpuResult1[i] << std::endl;
-		}
+		//}
 	}
 
 	for (int i = 0; i < 3; i++) {
-		if (expected2[i] != cpuResult2[i]) {
+		//if (expected2[i] != cpuResult2[i]) {
 			std::cout << "Result 2: " << "(Expected: " << expected2[i] << ", Result: " << cpuResult2[i] << std::endl;
-		}
+		//}
 	}
 
 	std::cout << "done!" << std::endl;

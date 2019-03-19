@@ -149,8 +149,8 @@ std::vector<float *> NeuralNetwork::runTraining(std::vector<float> *batch, std::
 		std::vector<float *> cpuActivatedLayerResults = activateLayerResults(&batchedBiasVectors, layer->getLayerSize());
 		layerResults->push_back(cpuActivatedLayerResults);
 
-		for (int i = 0; i < batchedValueVector.size(); i++) {
-			gpu_freeMemory(batchedValueVector[i]);
+		for (int k = 0; k < batchedValueVector.size(); k++) {
+			gpu_freeMemory(batchedValueVector[k]);
 		}
 
 		batchedValueVector.swap(batchedBiasVectors);
@@ -189,7 +189,7 @@ std::vector<float> NeuralNetwork::averageBatchedInputValues(std::vector<float *>
 }
 
 
-void NeuralNetwork::batchTrain(std::vector<float> *batch, std::vector<float> *expectedOutputs, unsigned int trainingsPerBatch) {
+void NeuralNetwork::batchTrain(std::vector<float> *batch, std::vector<float> *expectedOutputs, std::vector<float> *actualOutputs, unsigned int trainingsPerBatch) {
 	if (batch->size() != m_InputLayer->getLayerSize() * trainingsPerBatch) {
 		std::cout << "Input data size not equal to (numInputNeurons * trainingsPerBatch)" << std::endl;
 		return;
@@ -198,6 +198,11 @@ void NeuralNetwork::batchTrain(std::vector<float> *batch, std::vector<float> *ex
 	std::vector<std::vector<float *>> layerResults;
 	
 	std::vector<float *> trainingResults = runTraining(batch, &layerResults, trainingsPerBatch);
+	for (int i = 0; i < trainingsPerBatch; i++) {
+		for (int k = 0; k < getOutputLayer()->getLayerSize(); k++) {
+			(* actualOutputs)[(i * getOutputLayer()->getLayerSize()) + k] = trainingResults[i][k];
+		}
+	}
 
 	unsigned int outputLayerSize = getOutputLayer()->getLayerSize();
 	std::vector<float> expected = (* expectedOutputs);
@@ -207,8 +212,11 @@ void NeuralNetwork::batchTrain(std::vector<float> *batch, std::vector<float> *ex
 		for (int k = 0; k < trainingsPerBatch; k++) {
 			float actualValue = trainingResults[k][i];
 			float expectedValue = expected[(k * outputLayerSize) + i];
-			error += ((expectedValue - actualValue) * sigmoidDerivative(actualValue));
+			error += ((actualValue - expectedValue) * sigmoidDerivative(actualValue)); // swapped here 
+			//std::cout << "Error: " << error << ", ActualValue: " << actualValue << ", Expected: " << expectedValue << "sigmoid: " << sigmoidDerivative(actualValue) << std::endl;
 		}
+
+		//std::cout << "Final: " << (error / trainingsPerBatch) << std::endl;
 
 		getOutputLayer()->setError(i, error / trainingsPerBatch);
 	}
@@ -231,6 +239,47 @@ void NeuralNetwork::batchTrain(std::vector<float> *batch, std::vector<float> *ex
 			free(layerResults[i][k]);
 		}
 	}
+}
+
+
+std::vector<std::vector<float>> NeuralNetwork::train(std::vector<std::vector<float>> batch, std::vector<std::vector<float>> expectedOutputs) {
+	if (batch.size() != expectedOutputs.size()) {
+		std::cout << "Input and expected output vector sizes should be equal" << std::endl;
+		return std::vector<std::vector<float>>();
+	}
+
+	unsigned int outputNeuronCount = getOutputLayer()->getLayerSize();
+
+	std::vector<float> consolidatedBatch;
+	std::vector<float> consolidatedExpected;
+	std::vector<float> consolidatedActual(batch.size() * outputNeuronCount);
+
+	for (int i = 0; i < batch.size(); i++) {
+		for (int k = 0; k < batch[i].size(); k++) {
+			consolidatedBatch.push_back(batch[i][k]);
+		}
+	}
+
+	for (int i = 0; i < expectedOutputs.size(); i++) {
+		for (int k = 0; k < expectedOutputs[i].size(); k++) {
+			consolidatedExpected.push_back(expectedOutputs[i][k]);
+		}
+	}
+
+	batchTrain(&consolidatedBatch, &consolidatedExpected, &consolidatedActual, batch.size());
+
+	std::vector<std::vector<float>> actualOutputs;
+	for (int i = 0; i < batch.size(); i++) {
+		std::vector<float> trainingOutput;
+
+		for (int k = 0; k < outputNeuronCount; k++) {
+			trainingOutput.push_back(consolidatedActual[(i * outputNeuronCount) + k]);
+		}
+
+		actualOutputs.push_back(trainingOutput);
+	}
+
+	return actualOutputs;
 }
 
 

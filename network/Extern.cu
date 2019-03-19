@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <stdlib.h>
+#include <chrono>
 
 
 NeuralNetwork *getNetworkPointer(void *pointer) {
@@ -23,20 +25,40 @@ extern "C" __declspec(dllexport) void *createNetwork(int numInputNeurons, int nu
 
 
 
-extern "C" __declspec(dllexport) void batchTrainNetwork(void *_network, float *input, size_t inputSize, float *expectedOutput, size_t outputSize, size_t trainingsPerBatch) {
+extern "C" __declspec(dllexport) void batchTrainNetwork(void *_network, float *input, float *expectedOutput, float *actualOutput, unsigned int numTrainings) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 
-	std::vector<float> networkInput;
-	for (int i = 0; i < inputSize; i++) {
-		networkInput.push_back(input[i]);
+	unsigned int inputLayerSize = network->getInputLayer()->getLayerSize();
+	unsigned int outputLayerSize = network->getOutputLayer()->getLayerSize();
+
+	std::vector<std::vector<float>> networkInput;
+	std::vector<std::vector<float>> networkOutput;
+
+	for (int i = 0; i < numTrainings; i++) {
+		std::vector<float> training;
+
+		for (int k = 0; k < inputLayerSize; k++) {
+			training.push_back(input[(i * inputLayerSize) + k]);
+		}
+
+		networkInput.push_back(training);
 	}
 
-	std::vector<float> networkOutput;
-	for (int i = 0; i < outputSize; i++) {
-		networkOutput.push_back(expectedOutput[i]);
+	for (int i = 0; i < numTrainings; i++) {
+		std::vector<float> training;
+
+		for (int k = 0; k < outputLayerSize; k++) {
+			training.push_back(expectedOutput[(i * outputLayerSize) + k]);
+		}
+
+		networkOutput.push_back(training);
 	}
 
-	network->batchTrain(&networkInput, &networkOutput, trainingsPerBatch);
+	std::vector<std::vector<float>> actual = network->train(networkInput, networkOutput);
+
+	for (int i = 0; i < actual.size(); i++) {
+		memcpy(&actualOutput[i * outputLayerSize], actual[i].data(), outputLayerSize * sizeof(float));
+	}
 }
 
 

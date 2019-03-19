@@ -14,11 +14,6 @@ Layer::Layer() {
 
 Layer::Layer(NeuralNetwork *network, int numNeurons) {
 	m_Network = network;
-
-	for (int i = 0; i < numNeurons; i++) {
-		m_BiasVector.push_back(standardNormalRandom());
-	}
-
 	m_Neurons = std::vector<float>(numNeurons, 0);
 	m_ErrorVector = std::vector<float>(numNeurons, 0);
 	m_LayerSize = numNeurons;
@@ -33,10 +28,16 @@ void Layer::setOutputLayer(Layer *outputLayer) {
 
 void Layer::setPreviousLayer(Layer *previous) {
 	m_PreviousLayer = previous;
-	m_InputSynapseMatrix = std::vector<float>(previous->getLayerSize() * m_LayerSize);
 
-	for (int i = 0; i < m_InputSynapseMatrix.size(); i++) {
-		m_InputSynapseMatrix[i] = standardNormalRandom();
+	unsigned int previousLayerSize = previous->getLayerSize();
+	unsigned int matrixSize = previousLayerSize * m_LayerSize;
+
+	for (int i = 0; i < m_LayerSize; i++) {
+		m_BiasVector.push_back(randomWeight(previousLayerSize));
+	}
+
+	for (int i = 0; i < matrixSize; i++) {
+		m_InputSynapseMatrix.push_back(randomWeight(previousLayerSize));
 	}
 }
 
@@ -86,7 +87,7 @@ void Layer::setError(int neuron, float error) {
 void Layer::applyWeights(std::vector<float> *inputValues) {
 	for (int i = 0; i < m_LayerSize; i++) {
 		for (int k = 0; k < m_PreviousLayer->getLayerSize(); k++) {
-			float newWeight = getSynapseWeight(k, i) + (m_Network->getLearningRate() * m_ErrorVector[i] * (* inputValues)[k]);
+			float newWeight = getSynapseWeight(k, i) - (m_Network->getLearningRate() * m_ErrorVector[i] * (* inputValues)[k]);
 			setSynapseMatrixValue(newWeight, k, i);
 		}
 

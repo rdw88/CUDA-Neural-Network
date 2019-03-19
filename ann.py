@@ -49,27 +49,37 @@ class NeuralNetwork(object):
 		return NeuralNetwork(num_input_neurons, num_hidden_layers, neurons_per_hidden_layer, num_output_neurons, learning_rate, network_pointer)
 
 
-	def train(self, network_input, expected_output, num_trainings):
+	def train(self, network_input, expected_output):
 		if not self.network_pointer:
 			print('Neural network has not been initialized')
 			return
 
-		train_network = _network_ref.batchTrainNetwork
-		train_network.argtypes = [c_void_p, POINTER(c_float), c_size_t, POINTER(c_float), c_size_t, c_size_t]
+		if len(network_input) == 0:
+			print('Network input length was 0, no training was completed')
+			return
 
-		input_array_type = c_float * len(network_input)
-		output_array_type = c_float * len(expected_output)
+		train_network = _network_ref.batchTrainNetwork
+		train_network.argtypes = [c_void_p, POINTER(c_float), POINTER(c_float), POINTER(c_float), c_uint]
+
+		input_array_type = c_float * (len(network_input) * self.num_input_neurons)
+		output_array_type = c_float * (len(network_input) * self.num_output_neurons)
+		actual_output_type = c_float * (len(network_input) * self.num_output_neurons)
 
 		input_array = input_array_type()
 		output_array = output_array_type()
+		actual_output = actual_output_type()
 
-		for i, obj in enumerate(network_input):
-			input_array[i] = obj
+		for i, training in enumerate(network_input):
+			for k, neuron in enumerate(training):
+				input_array[(i * len(training)) + k] = float(neuron)
 
-		for i, obj in enumerate(expected_output):
-			output_array[i] = obj
+		for i, training in enumerate(expected_output):
+			for k, neuron in enumerate(training):
+				output_array[(i * len(training)) + k] = float(neuron)
 
-		train_network(self.network_pointer, input_array, len(network_input), output_array, len(expected_output), num_trainings)
+		train_network(self.network_pointer, input_array, output_array, actual_output, len(network_input))
+
+		return actual_output
 
 
 	def output(self, network_input):

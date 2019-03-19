@@ -1,6 +1,7 @@
 //#include "Util.h"
 #include <random>
 #include <math.h>
+#include <iostream>
 
 
 std::random_device device;
@@ -10,6 +11,11 @@ std::normal_distribution<float> stdNormalDist(0.0, 1.0);
 
 float standardNormalRandom() {
 	return stdNormalDist(generator);
+}
+
+
+float randomWeight(unsigned int previousLayerSize) {
+	return standardNormalRandom() * sqrtf(2 / ((float) previousLayerSize)); // He et al. (2015) initialization
 }
 
 

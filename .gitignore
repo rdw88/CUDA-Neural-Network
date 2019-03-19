@@ -1,3 +1,5 @@
 bin/
 archive/
+__pycache__/
+training/
 notes.txt

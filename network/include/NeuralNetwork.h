@@ -15,7 +15,8 @@ class NeuralNetwork {
 	public:
 		NeuralNetwork();
 		NeuralNetwork(int numInputNeurons, int numHiddenLayers, int neuronsPerHiddenLayer, int numOutputNeurons, float learningRate);
-		void batchTrain(std::vector<float> *batch, std::vector<float> *expectedOutputs, unsigned int trainingsPerBatch);
+		std::vector<std::vector<float>> train(std::vector<std::vector<float>> batch, std::vector<std::vector<float>> expectedOutputs);
+		void batchTrain(std::vector<float> *batch, std::vector<float> *expectedOutputs, std::vector<float> *actualOutputs, unsigned int trainingsPerBatch);
 		std::vector<float *> loadSynapseMatricesIntoGPU();
 		std::vector<float *> loadBatchIntoGPU(std::vector<float> *batch, unsigned int trainingsPerBatch);
 		std::vector<float *> loadBatchIntoCPU(std::vector<float> *batch, unsigned int trainingsPerBatch);
