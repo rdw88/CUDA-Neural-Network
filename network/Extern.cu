@@ -1,3 +1,13 @@
+/**
+ * Extern.cu
+ * April 4, 2019
+ * Ryan Wise
+ * 
+ * An external interface to the neural network that can be compiled into a DLL and invoked from another programming language.
+ * 
+ */
+
+
 #include "Extern.h"
 #include "NeuralNetwork.h"
 
@@ -5,7 +15,9 @@
 #include <vector>
 #include <string>
 #include <stdlib.h>
-#include <chrono>
+
+
+using namespace std;
 
 
 NeuralNetwork *getNetworkPointer(void *pointer) {
@@ -17,69 +29,48 @@ NeuralNetwork *getNetworkPointer(void *pointer) {
 }
 
 
-extern "C" __declspec(dllexport) void *createNetwork(int numInputNeurons, int numHiddenLayers, int neuronsPerHiddenLayer, int numOutputNeurons, float learningRate) {
-	std::cout << "Creating network with the following paramters: " << numInputNeurons << " " << numHiddenLayers << " " << neuronsPerHiddenLayer << " " << numOutputNeurons << " " << learningRate << std::endl;
-	NeuralNetwork *network = new NeuralNetwork(numInputNeurons, numHiddenLayers, neuronsPerHiddenLayer, numOutputNeurons, learningRate);
+extern "C" __declspec(dllexport) void *createNetwork(unsigned int *layerSizes, unsigned int numLayers, unsigned int batchSize, float learningRate) {
+	vector<unsigned int> layerSizeVector;
+
+	for (int i = 0; i < numLayers; i++) {
+		layerSizeVector.push_back(layerSizes[i]);
+	}
+
+	NeuralNetwork *network = new NeuralNetwork(layerSizeVector, batchSize, learningRate);
 	return (void *) network;
 }
 
 
 
-extern "C" __declspec(dllexport) void batchTrainNetwork(void *_network, float *input, float *expectedOutput, float *actualOutput, unsigned int numTrainings) {
+extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input, float *expectedOutput) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 
-	unsigned int inputLayerSize = network->getInputLayer()->getLayerSize();
-	unsigned int outputLayerSize = network->getOutputLayer()->getLayerSize();
+	int inputLayerSize = network->getInputSize() * network->getBatchSize();
+	int outputLayerSize = network->getOutputSize() * network->getBatchSize();
 
-	std::vector<std::vector<float>> networkInput;
-	std::vector<std::vector<float>> networkOutput;
+	vector<float> networkInput { input, input + inputLayerSize };
+	vector<float> networkOutput { expectedOutput, expectedOutput + outputLayerSize };
 
-	for (int i = 0; i < numTrainings; i++) {
-		std::vector<float> training;
-
-		for (int k = 0; k < inputLayerSize; k++) {
-			training.push_back(input[(i * inputLayerSize) + k]);
-		}
-
-		networkInput.push_back(training);
-	}
-
-	for (int i = 0; i < numTrainings; i++) {
-		std::vector<float> training;
-
-		for (int k = 0; k < outputLayerSize; k++) {
-			training.push_back(expectedOutput[(i * outputLayerSize) + k]);
-		}
-
-		networkOutput.push_back(training);
-	}
-
-	std::vector<std::vector<float>> actual = network->train(networkInput, networkOutput);
-
-	for (int i = 0; i < actual.size(); i++) {
-		memcpy(&actualOutput[i * outputLayerSize], actual[i].data(), outputLayerSize * sizeof(float));
-	}
+	network->train(networkInput, networkOutput);
 }
 
 
 
-extern "C" __declspec(dllexport) void getNetworkOutputForInput(void *_network, float *input, size_t inputSize, float *output, size_t outputSize) {
+extern "C" __declspec(dllexport) void getNetworkOutputForInput(void *_network, float *input, float *output) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 
-	std::vector<float> networkInput;
-	for (int i = 0; i < inputSize; i++) {
-		networkInput.push_back(input[i]);
-	}
+	int inputLayerSize = network->getInputSize();
+	int outputLayerSize = network->getOutputSize();
 
-	std::vector<float> networkOutput = network->getOutputForInput(&networkInput);
-	if (networkOutput.size() != outputSize) {
-		std::cout << "ERROR: Expected output size of " << networkOutput.size() << " but got " << outputSize << std::endl;
+	vector<float> networkInput { input, input + inputLayerSize };
+	vector<float> networkOutput = network->getOutputForInput(networkInput);
+
+	if (networkOutput.size() != outputLayerSize) {
+		cout << "ERROR: Expected output size of " << networkOutput.size() << " but got " << outputLayerSize << endl;
 		return;
 	}
 
-	for (int i = 0; i < networkOutput.size(); i++) {
-		output[i] = networkOutput[i];
-	}
+	memcpy(output, networkOutput.data(), networkOutput.size() * sizeof(float));
 }
 
 
@@ -88,11 +79,11 @@ extern "C" __declspec(dllexport) void saveNetwork(void *_network, char *filename
 	NeuralNetwork *network = getNetworkPointer(_network);
 
 	if (filename == NULL) {
-		std::cout << "ERROR: Filename is null!" << std::endl;
+		cout << "ERROR: Filename is null!" << endl;
 		return;
 	}
 
-	std::string file(filename, filenameSize);
+	string file(filename, filenameSize);
 	network->save(file);
 }
 
@@ -100,15 +91,15 @@ extern "C" __declspec(dllexport) void saveNetwork(void *_network, char *filename
 
 extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filenameSize) {
 	if (filename == NULL) {
-		std::cout << "ERROR: Filename is null!" << std::endl;
+		cout << "ERROR: Filename is null!" << endl;
 		return NULL;
 	}
 
-	std::string file(filename, filenameSize);
+	string file(filename, filenameSize);
 	
 	NeuralNetwork *network = networkFromFile(file);
 	if (network == NULL) {
-		std::cout << "Failed to load network from file!" << std::endl;
+		cout << "Failed to load network from file!" << endl;
 		return NULL;
 	}
 

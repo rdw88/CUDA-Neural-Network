@@ -1,5 +1,6 @@
 bin/
 archive/
 __pycache__/
+.vscode/
 training/
 notes.txt

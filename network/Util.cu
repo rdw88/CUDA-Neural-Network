@@ -1,7 +1,16 @@
-//#include "Util.h"
+/**
+ * Util.cu
+ * April 4, 2019
+ * Ryan Wise
+ * 
+ * Basic utility functions used by the neural network.
+ * 
+ */
+
+
+#include "Util.h"
 #include <random>
 #include <math.h>
-#include <iostream>
 
 
 std::random_device device;
