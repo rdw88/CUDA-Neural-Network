@@ -105,3 +105,10 @@ extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filena
 
 	return (void *) network;
 }
+
+
+
+extern "C" __declspec(dllexport) void setLearningRate(void *_network, float learningRate) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+	network->setLearningRate(learningRate);
+}

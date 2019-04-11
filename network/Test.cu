@@ -397,6 +397,63 @@ void test_train() {
 }
 
 
+void test_networkFromFile() {
+	NeuralNetwork *network = newTestNetwork();
+	network->save("test_networkFromFile.csv");
+
+	NeuralNetwork *loadedNetwork = networkFromFile("test_networkFromFile.csv");
+
+	assert(loadedNetwork->getBiasVectors().size() == network->getBiasVectors().size());
+	assert(loadedNetwork->getErrorVectors().size() == network->getErrorVectors().size());
+	assert(loadedNetwork->getSynapseMatrices().size() == network->getSynapseMatrices().size());
+	assert(loadedNetwork->getValueVectors().size() == network->getValueVectors().size());
+	assert(loadedNetwork->getLayerSizes().size() == network->getLayerSizes().size());
+	assert(loadedNetwork->getBatchSize() == network->getBatchSize());
+	assert(loadedNetwork->getLearningRate() == network->getLearningRate());
+	assert(loadedNetwork->getBiasVectors()[0] == NULL);
+	assert(loadedNetwork->getSynapseMatrices()[0] == NULL);
+	assert(loadedNetwork->getErrorVectors()[0] == NULL);
+
+	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
+		assert(loadedNetwork->getLayerSizes()[i] == network->getLayerSizes()[i]);
+	}
+
+	for (int i = 1; i < loadedNetwork->getSynapseMatrices().size(); i++) {
+		int matrixSize = loadedNetwork->getLayerSizes()[i] * loadedNetwork->getLayerSizes()[i - 1];
+
+		float *loadedNetworkMatrix = (float *) allocPinnedMemory(matrixSize * sizeof(float));
+		gpu_copyMemory(loadedNetworkMatrix, loadedNetwork->getCPUSynapseMatrices()[i][0], matrixSize * sizeof(float));
+
+		float *networkMatrix = (float *) allocPinnedMemory(matrixSize * sizeof(float));
+		gpu_copyMemory(networkMatrix, network->getCPUSynapseMatrices()[i][0], matrixSize * sizeof(float));
+
+		for (int k = 0; k < matrixSize; k++) {
+			assert(loadedNetworkMatrix[k] == networkMatrix[k]);
+		}
+
+		freePinnedMemory(loadedNetworkMatrix);
+		freePinnedMemory(networkMatrix);
+	}
+
+	for (int i = 1; i < loadedNetwork->getBiasVectors().size(); i++) {
+		int biasVectorSize = loadedNetwork->getLayerSizes()[i];
+
+		float *loadedNetworkBias = (float *) allocPinnedMemory(biasVectorSize * sizeof(float));
+		gpu_copyMemory(loadedNetworkBias, loadedNetwork->getBiasVectors()[i], biasVectorSize * sizeof(float));
+
+		float *networkBias = (float *) allocPinnedMemory(biasVectorSize * sizeof(float));
+		gpu_copyMemory(networkBias, network->getBiasVectors()[i], biasVectorSize * sizeof(float));
+
+		for (int k = 0; k < biasVectorSize; k++) {
+			assert(loadedNetworkBias[k] == networkBias[k]);
+		}
+
+		freePinnedMemory(loadedNetworkBias);
+		freePinnedMemory(networkBias);
+	}
+}
+
+
 int main(void) {
 	map<string, void (*)()> tests;
 
@@ -407,7 +464,8 @@ int main(void) {
 	tests["Test 4: test_calculateError"] = &test_calculateError;
 	tests["Test 5: test_backpropogate"] = &test_backpropogate;
 	tests["Test 6: test_applyWeights"] = &test_applyWeights;
-	tests["Test 7: test_train"] = &test_train;
+	tests["Test 7: test_networkFromFile"] = &test_networkFromFile;
+	tests["Test 8: test_train"] = &test_train;
 
 	for (auto const& x : tests) {
 		cout << x.first << "() ... ";

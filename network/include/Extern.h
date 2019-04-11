@@ -22,5 +22,7 @@ extern "C" __declspec(dllexport) void saveNetwork(void *_network, char *filename
 
 extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filenameSize);
 
+extern "C" __declspec(dllexport) void setLearningRate(void *_network, float learningRate);
+
 
 #endif

@@ -15,6 +15,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+#include <string.h>
 
 
 using namespace std;
@@ -430,6 +431,16 @@ void NeuralNetwork::setBiasVector(unsigned int layer, vector<float> vector) {
 
 
 /**
+* Sets the learning rate of the network.
+* 
+* @param learningRate The new learning rate to set for the network.
+*/
+void NeuralNetwork::setLearningRate(float learningRate) {
+	m_LearningRate = learningRate;
+}
+
+
+/**
 	The output values of the network.
 
 	@return An array of vectors containing the output values of the network for each training example provided as input.
@@ -466,6 +477,18 @@ vector<float *> NeuralNetwork::getErrorVectors() {
 */
 vector<float **> NeuralNetwork::getSynapseMatrices() {
 	return m_SynapseMatrices;
+}
+
+
+/**
+* The synapse matrices for the network. The first pointer is stored on the CPU and can be dereferenced directly to get the GPU
+* memory address of a particular batch.
+* 
+* @return A vector of synapse matrices for each layer. Each pointer in the vector is a pointer to CPU memory space and can be
+* dereferenced to find the memory address of a batch in the GPU.
+*/
+std::vector<float **> NeuralNetwork::getCPUSynapseMatrices() {
+	return m_CpuSynapseMatrices;
 }
 
 
@@ -592,29 +615,23 @@ NeuralNetwork *networkFromFile(string filename) {
 
 		string synapseMatrix;
 		getline(inputFile, synapseMatrix);
-		size_t position = 0;
-		string weight;
 
-		while ((position = synapseMatrix.find(",")) != string::npos) {
-			weight = synapseMatrix.substr(0, position);
+		char *matrixToken = strtok((char *) synapseMatrix.c_str(), ",");
+		while (matrixToken != NULL) {
+			string weight(matrixToken);
 			matrix.push_back(stof(weight));
-			synapseMatrix.erase(0, position + 1);
+			matrixToken = strtok(NULL, ",");
 		}
-
-		matrix.push_back(stof(synapseMatrix));
 
 		string biasVector;
 		getline(inputFile, biasVector);
-		position = 0;
-		string bias;
 
-		while ((position = biasVector.find(",")) != string::npos) {
-			bias = biasVector.substr(0, position);
+		char *biasToken = strtok((char *) biasVector.c_str(), ",");
+		while (biasToken != NULL) {
+			string bias(biasToken);
 			vector.push_back(stof(bias));
-			biasVector.erase(0, position + 1);
+			biasToken = strtok(NULL, ",");
 		}
-
-		vector.push_back(stof(biasVector));
 
 		network->setSynapseMatrix(i, matrix);
 		network->setBiasVector(i, vector);

@@ -207,6 +207,13 @@ class NeuralNetwork {
 		void setBiasVector(unsigned int layer, std::vector<float> vector);
 
 		/**
+		 * Sets the learning rate of the network.
+		 * 
+		 * @param learningRate The new learning rate to set for the network.
+		 */
+		void setLearningRate(float learningRate);
+
+		/**
 			The output values of the network.
 
 			@return An array of vectors containing the output values of the network for each training example provided as input.
@@ -233,6 +240,15 @@ class NeuralNetwork {
 			@return A vector of synapse matrices for each layer. The first matrix will always be null (the input layer).
 		*/
 		std::vector<float **> getSynapseMatrices();
+
+		/**
+		 * The synapse matrices for the network. The first pointer is stored on the CPU and can be dereferenced directly to get the GPU
+		 * memory address of a particular batch.
+		 * 
+		 * @return A vector of synapse matrices for each layer. Each pointer in the vector is a pointer to CPU memory space and can be
+		 * dereferenced to find the memory address of a batch in the GPU.
+		 */
+		std::vector<float **> getCPUSynapseMatrices();
 
 		/**
 			The value vectors for the network.
