@@ -29,6 +29,7 @@ NeuralNetwork *getNetworkPointer(void *pointer) {
 }
 
 
+
 extern "C" __declspec(dllexport) void *createNetwork(unsigned int *layerSizes, unsigned int numLayers, unsigned int batchSize, float learningRate) {
 	vector<unsigned int> layerSizeVector;
 
@@ -56,17 +57,14 @@ extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input,
 
 
 
-extern "C" __declspec(dllexport) void getNetworkOutputForInput(void *_network, float *input, float *output) {
+extern "C" __declspec(dllexport) void getNetworkOutputForInput(void *_network, float *input, unsigned int inputSize, float *output, unsigned int outputSize) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 
-	int inputLayerSize = network->getInputSize();
-	int outputLayerSize = network->getOutputSize();
-
-	vector<float> networkInput { input, input + inputLayerSize };
+	vector<float> networkInput { input, input + inputSize };
 	vector<float> networkOutput = network->getOutputForInput(networkInput);
 
-	if (networkOutput.size() != outputLayerSize) {
-		cout << "ERROR: Expected output size of " << networkOutput.size() << " but got " << outputLayerSize << endl;
+	if (networkOutput.size() != outputSize) {
+		cout << "ERROR: Expected output size of " << networkOutput.size() << " but got " << outputSize << endl;
 		return;
 	}
 

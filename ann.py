@@ -91,15 +91,12 @@ class NeuralNetwork(object):
 		train_network = _network_ref.trainNetwork
 		train_network.argtypes = [c_void_p, POINTER(c_float), POINTER(c_float)]
 
-		input_array = (c_float * (len(network_input) * self.layer_sizes[0]))()
-		output_array = (c_float * (len(network_input) * self.layer_sizes[-1]))()
+		input_array = (c_float * len(network_input))()
+		output_array = (c_float * len(expected_output))()
 
-		consolidated_input = list(itertools.chain.from_iterable(network_input))
-		consolidated_output = list(itertools.chain.from_iterable(expected_output))
-
-		# For some reason, this copies consolidated_* to *_array around 10x faster than using a for loop
-		input_array[:] = consolidated_input
-		output_array[:] = consolidated_output
+		# For some reason, this copies network_* to *_array around 10x faster than using a for loop
+		input_array[:] = network_input
+		output_array[:] = expected_output
 
 		train_network(self.network_pointer, input_array, output_array)
 
@@ -109,21 +106,17 @@ class NeuralNetwork(object):
 			print('Neural network has not been initialized')
 			return list()
 
-		assert len(network_input) == self.layer_sizes[0]
-
 		get_output = _network_ref.getNetworkOutputForInput
-		get_output.argtypes = [c_void_p, POINTER(c_float), POINTER(c_float)]
+		get_output.argtypes = [c_void_p, POINTER(c_float), c_uint, POINTER(c_float), c_uint]
 
-		input_array_type = c_float * self.layer_sizes[0]
-		output_array_type = c_float * self.layer_sizes[-1]
+		output_size = int(len(network_input) / self.layer_sizes[0]) * self.layer_sizes[-1]
 
-		input_array = input_array_type()
-		output_array = output_array_type()
+		input_array = (c_float * len(network_input))()
+		output_array = (c_float * output_size)()
 
-		for i, obj in enumerate(network_input):
-			input_array[i] = obj
+		input_array[:] = network_input
 
-		get_output(self.network_pointer, input_array, output_array)
+		get_output(self.network_pointer, input_array, len(network_input), output_array, output_size)
 
 		return list(output_array)
 
@@ -143,6 +136,15 @@ class NeuralNetwork(object):
 		save_network(self.network_pointer, self.output_file.encode('ascii'), len(self.output_file))
 
 
+	def set_learning_rate(self, learning_rate):
+		self.learning_rate = learning_rate
+		
+		set_lrate = _network_ref.setLearningRate
+		set_lrate.argtypes = [c_void_p, c_float]
+
+		set_lrate(self.network_pointer, learning_rate)
+
+
 
 if __name__ == '__main__':
 	network = NeuralNetwork([10, 5, 5, 10], 32, 0.1)
@@ -150,11 +152,11 @@ if __name__ == '__main__':
 	single_input = [0.15, 0.45, 0.78, 0.04, 0.45, 0.73, 0.19, 0.11, 0.01, 0.11]
 	single_input_2 = [0.38, 0.92, 0.16, 0.63, 0.82, 0.11, 0.02, 0.73, 0.25, 0.68]
 
-	input_values = [single_input] * 32
-	input_values_2 = [single_input_2] * 32
+	input_values = single_input * 32
+	input_values_2 = single_input_2 * 32
 
-	output_values = [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]] * 32
-	output_values_2 = [[0.3, 0.9, 0.5, 0.0, 0.7, 0.4, 0.4, 0.1, 0.8, 0.3]] * 32
+	output_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] * 32
+	output_values_2 = [0.3, 0.9, 0.5, 0.0, 0.7, 0.4, 0.4, 0.1, 0.8, 0.3] * 32
 
 	for i in range(3200):
 		network.train(input_values, output_values)
@@ -162,10 +164,19 @@ if __name__ == '__main__':
 
 	output = network.output(single_input)
 	for i, item in enumerate(output):
-		print('%.1f' % item, output_values[0][i])
+		print('%.1f' % item, output_values[i])
 
 	print('-' * 30)
 
 	output = network.output(single_input_2)
 	for i, item in enumerate(output):
-		print('%.1f' % item, output_values_2[0][i])
+		print('%.1f' % item, output_values_2[i])
+
+	print('-' * 30)
+
+	batched_input = single_input + single_input_2
+	batched_output = network.output(batched_input)
+	expected_batched_output = output_values[:10] + output_values_2[:10]
+
+	for i, item in enumerate(batched_output):
+		print('%.1f' % item, expected_batched_output[i])

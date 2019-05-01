@@ -193,7 +193,6 @@ void NeuralNetwork::loadInput(vector<float> input) {
 	}
 
 	float *pinnedInputMemory = (float *) allocPinnedMemory(input.size() * sizeof(float));
-
 	gpu_copyMemory(pinnedInputMemory, input.data(), input.size() * sizeof(float));
 
 	/* Load input data into GPU memory */
@@ -229,31 +228,37 @@ void NeuralNetwork::loadExpectedOutput(vector<float> expectedOutput) {
 
 
 /**
-	Get the output of the network given an input.
+	Get the output of the network given an input. The input can be batched at any size n for 1 <= n <= batchSize.
 
 	@param input The input values to be assigned to the input neurons.
 	@return A vector containing the values of the output neurons derived from the supplied input.
 */
 vector<float> NeuralNetwork::getOutputForInput(vector<float> input) {
-	if (input.size() != getInputSize()) {
-		cout << "Input size must be equal to number of input neurons!" << endl;
+	if (input.size() % getInputSize() != 0 || input.size() == 0) {
+		cout << "The size of each batch must be equal to the input layer size!" << endl;
 		return vector<float>();
 	}
 
-	if (m_BatchSize > 1) {
-		unsigned int inputSize = input.size();
+	unsigned int providedBatches = input.size() / getInputSize();
 
-		for (int i = 0; i < m_BatchSize - 1; i++) {
-			for (int k = 0; k < inputSize; k++) {
-				input.push_back(input[k]);
-			}
-		}
+	if (providedBatches > m_BatchSize) {
+		cout << "The number of batches provided exceeded the batch size of the network!" << endl;
+		return vector<float>();
+	}
+
+	if (providedBatches < m_BatchSize) {
+		input.resize(getInputSize() * m_BatchSize);
 	}
 
 	loadInput(input);
 	feedForward();
 
-	return getCurrentOutput();
+	vector<float> networkOutput = getCurrentOutput();
+	if (providedBatches < m_BatchSize) {
+		networkOutput.resize(getOutputSize() * providedBatches);
+	}
+
+	return networkOutput;
 }
 
 
@@ -329,10 +334,12 @@ void NeuralNetwork::updateNetwork() {
 	@return A vector containing the current values of the output neurons.
 */
 vector<float> NeuralNetwork::getCurrentOutput() {
-	vector<float> cpuOutput(getOutputSize());
-	float *gpuOutput = m_CpuValueVectors[m_CpuValueVectors.size() - 1][0];
+	vector<float> cpuOutput(getOutputSize() * m_BatchSize);
 
-	gpu_copyMemory(&(cpuOutput[0]), gpuOutput, getOutputSize() * sizeof(float));
+	for (int i = 0; i < m_BatchSize; i++) {
+		float *gpuBatchOutput = m_CpuValueVectors[m_CpuValueVectors.size() - 1][i];
+		gpu_copyMemory(&(cpuOutput[getOutputSize() * i]), gpuBatchOutput, getOutputSize() * sizeof(float));
+	}
 
 	return cpuOutput;
 }

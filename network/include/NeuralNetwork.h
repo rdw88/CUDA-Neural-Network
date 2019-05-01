@@ -140,7 +140,7 @@ class NeuralNetwork {
 		void loadExpectedOutput(std::vector<float> expectedOutput);
 
 		/**
-			Get the output of the network given an input.
+			Get the output of the network given an input. The input can be batched at any size n for 1 <= n <= batchSize.
 
 			@param input The input values to be assigned to the input neurons.
 			@return A vector containing the values of the output neurons derived from the supplied input.

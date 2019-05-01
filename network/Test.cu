@@ -359,6 +359,8 @@ void test_train() {
 
 	NeuralNetwork network(trainNetworkLayerSizes, 32, 0.1);
 
+	network.save("1.csv");
+
 	vector<float> input;
 	vector<float> expectedOutput;
 
@@ -394,6 +396,8 @@ void test_train() {
 		float roundedOutput = roundf(networkOutput[i] * 10) / 10;
 		assert(roundedOutput == expectedOutput[i]);
 	}
+
+	network.save("2.csv");
 }
 
 
