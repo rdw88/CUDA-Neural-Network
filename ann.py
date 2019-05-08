@@ -1,4 +1,5 @@
 import random
+import os
 
 import ctypes
 from ctypes import *
@@ -6,7 +7,7 @@ from ctypes import *
 import itertools
 
 
-ANN_DLL_PATH = 'network/bin/ann.dll'
+ANN_DLL_PATH = os.path.join(os.environ['ANN_DLL_PATH'], 'ann.dll')
 _network_ref = ctypes.CDLL(ANN_DLL_PATH)
 
 
