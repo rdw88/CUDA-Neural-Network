@@ -13,6 +13,15 @@
 
 
 /**
+ * The supported activation functions for a layer in a neural network.
+ */
+enum Activation {
+	RELU = 0,
+	SIGMOID = 1
+};
+
+
+/**
 	Create the cuBLAS context for the neural network. This creates a global context that is used
 	to perform basic linear algebra operations on the GPU.
 */
@@ -101,8 +110,9 @@ void gpu_batchVectorMatrixMultiply(float **matrices, float **vectors, float **re
  * @param vectors An array of vectors allocated on the GPU.
  * @param numVectors The number of vectors in @vectors.
  * @param vectorLength The length of each vector in @vectors.
+ * @param activation The activation function to use.
  */
-void gpu_sigmoid(float **vectors, unsigned int numVectors, unsigned int vectorLength);
+void gpu_activate(float **vectors, unsigned int numVectors, unsigned int vectorLength, Activation activation);
 
 
 /**
@@ -114,8 +124,9 @@ void gpu_sigmoid(float **vectors, unsigned int numVectors, unsigned int vectorLe
  * @param errorVector A allocated vector on the GPU that will hold the result vector.
  * @param numVectors The number of vectors in @outputVectors.
  * @param vectorLength The length of each vector in @outputVectors, @expectedVector, and @errorVector.
+ * @param activation The activation function to use.
  */
-void gpu_calculateError(float **outputVectors, float *expectedVector, float *errorVector, unsigned int numVectors, unsigned int vectorLength);
+void gpu_calculateError(float **outputVectors, float *expectedVector, float *errorVector, unsigned int numVectors, unsigned int vectorLength, Activation activation);
 
 
 /**
@@ -132,8 +143,9 @@ void gpu_calculateError(float **outputVectors, float *expectedVector, float *err
  * @param errorVectorSize The size of @errorVector.
  * @param destinationErrorSize The size of @destinationErrorVector.
  * @param batchSize The number of training examples in the current training batch. This will also be the size of @destinationValueVector.
+ * @param activation The activation function to use.
  */
-void gpu_backpropogate(float *synapseMatrix, float *errorVector, float *destinationErrorVector, float **destinationValueVector, unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize);
+void gpu_backpropogate(float *synapseMatrix, float *errorVector, float *destinationErrorVector, float **destinationValueVector, unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize, Activation activation);
 
 
 /**

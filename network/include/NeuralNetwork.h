@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "GPU.h"
+
 
 class NeuralNetwork {
 	private:
@@ -90,6 +92,11 @@ class NeuralNetwork {
 			The learning rate for the network.
 		*/
 		float m_LearningRate;
+
+		/**
+		 * The activation function to use for each layer
+		 */
+		std::vector<Activation> m_ActivationFunctions;
 		
 
 	public:
@@ -101,7 +108,7 @@ class NeuralNetwork {
 		NeuralNetwork();
 
 		/**
-			Constructs a new neural network.
+			Constructs a new neural network. Each layer uses ReLU as the default activation function.
 
 			@param neuronsPerLayer The number of neurons per layer.
 			@param batchSize The batch size to be used in training.
@@ -214,6 +221,13 @@ class NeuralNetwork {
 		void setLearningRate(float learningRate);
 
 		/**
+		 * Sets the activation function to use for each layer in the network.
+		 * 
+		 * @param activations A vector of Activations representing the activation function to use.
+		 */
+		void setLayerActivations(std::vector<Activation> activations);
+
+		/**
 			The output values of the network.
 
 			@return An array of vectors containing the output values of the network for each training example provided as input.
@@ -263,6 +277,13 @@ class NeuralNetwork {
 			@return A vector containing the sizes of each layer in the network.
 		*/
 		std::vector<unsigned int> getLayerSizes();
+
+		/**
+		 * The activation functions used for each layer in the network.
+		 * 
+		 * @return A vector containing the activation functions used for each layer in the network.
+		 */
+		std::vector<Activation> getLayerActivations();
 
 		/**
 			The expected output loaded in the network.

@@ -110,3 +110,16 @@ extern "C" __declspec(dllexport) void setLearningRate(void *_network, float lear
 	NeuralNetwork *network = getNetworkPointer(_network);
 	network->setLearningRate(learningRate);
 }
+
+
+
+extern "C" __declspec(dllexport) void setLayerActivations(void *_network, int *activations, unsigned int activationSize) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<Activation> layerActivations;
+	for (int i = 0; i < activationSize; i++) {
+		layerActivations.push_back(static_cast<Activation>(activations[i]));
+	}
+
+	network->setLayerActivations(layerActivations);
+}

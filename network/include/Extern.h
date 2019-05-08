@@ -24,5 +24,7 @@ extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filena
 
 extern "C" __declspec(dllexport) void setLearningRate(void *_network, float learningRate);
 
+extern "C" __declspec(dllexport) void setLayerActivations(void *_network, int *activations, unsigned int activationSize);
+
 
 #endif

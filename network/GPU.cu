@@ -24,6 +24,12 @@ using namespace std;
 static cublasHandle_t cublasContext;
 
 
+/*
+	A device function pointer type. Used for specifying an activation function.
+*/
+typedef float (*Op)(float);
+
+
 /**
 	Create the cuBLAS context for the neural network. This creates a global context that is used
 	to perform basic linear algebra operations on the GPU.
@@ -138,6 +144,7 @@ void gpu_batchVectorMatrixMultiply(float **matrices, float **vectors, float **re
 	cublasSgemmBatched(cublasContext, CUBLAS_OP_T, CUBLAS_OP_N, numRows, 1, numColumns, &alpha, matrices, lda, vectors, ldb, &beta, results, ldc, batches);
 }
 
+
 /**
 	Sigmoid implementation running on the GPU.
 
@@ -161,20 +168,63 @@ __device__ __forceinline__ float sigmoidDerivative(float input) {
 
 
 /**
-	CUDA kernel that performs sigmoid in parallel for the elements in the passed vectors.
+	ReLU implementation running on the GPU.
 
-	@param vectors An array of vectors to perform the sigmoid function on.
+	@param input The input value to perform the ReLU function on.
+	@return ReLU of the input.
+*/
+__device__ __forceinline__ float relu(float input) {
+	return fmaxf(0.0f, input);
+}
+
+
+/**
+	ReLU derivative implementation running on the GPU.
+
+	@param input The input value to perform the ReLU derivative function on.
+	@return The ReLU derivative of the input.
+*/
+__device__ __forceinline__ float reluDerivative(float input) {
+	if (input > 0)
+		return 1;
+
+	return 0;
+}
+
+
+/**
+	Must maintain same order as the Activation enum defined in GPU.h
+
+	Indexed activation functions for fast lookup of which activation function to use during
+	feed forward and backpropogation operations. 
+*/
+__device__ Op activationOps[] = {
+	&relu,
+	&sigmoid
+};
+
+__device__ Op activationDerivativeOps[] = {
+	&reluDerivative,
+	&sigmoidDerivative
+};
+
+
+/**
+	CUDA kernel that performs the activation function in parallel for the elements in the passed vectors.
+
+	@param vectors An array of vectors to perform the activation function on.
 	@param numVectors The number of vectors in @vectors.
 	@param vectorLength The length of each vector in @vectors.
+	@param activationOperation An index in the *activationOps* array that determines which activation function to use.
 */
-__global__ void sigmoid_gpu_kernel(float ** __restrict__ vectors, unsigned int numVectors, unsigned int vectorLength) {
+__global__ void activation_gpu_kernel(float ** __restrict__ vectors, unsigned int numVectors, unsigned int vectorLength, int activationOperation) {
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
 
 	if (vectorIndex >= numVectors || vectorSubindex >= vectorLength)
 		return;
 
-	vectors[vectorIndex][vectorSubindex] = sigmoid(vectors[vectorIndex][vectorSubindex]);
+	vectors[vectorIndex][vectorSubindex] = activationOps[activationOperation](vectors[vectorIndex][vectorSubindex]);
 }
 
 
@@ -186,8 +236,11 @@ __global__ void sigmoid_gpu_kernel(float ** __restrict__ vectors, unsigned int n
 	@param errorVector A vector with length equal to the number of output neurons that stores the resultant errors of each neuron.
 	@param numVectors The number of vectors in the training batch.
 	@param vectorLength The length of each vector, should be equal to the number of output neurons.
+	@param activationOperation An index in the *activationOps* array that determines which activation function to use.
 */
-__global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, float * __restrict__ expectedVector, float * __restrict__ errorVector, unsigned int numVectors, unsigned int vectorLength) {
+__global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, float * __restrict__ expectedVector, float * __restrict__ errorVector,
+	unsigned int numVectors, unsigned int vectorLength, int activationOperation) {
+
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
 	unsigned int expectedVectorIndex = (vectorIndex * vectorLength) + vectorSubindex;
@@ -196,7 +249,7 @@ __global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, f
 		return;
 
 	float batches = (float) numVectors;
-	float error = ((resultVectors[vectorIndex][vectorSubindex] - expectedVector[expectedVectorIndex]) * sigmoidDerivative(resultVectors[vectorIndex][vectorSubindex])) / batches;
+	float error = ((resultVectors[vectorIndex][vectorSubindex] - expectedVector[expectedVectorIndex]) * activationDerivativeOps[activationOperation](resultVectors[vectorIndex][vectorSubindex])) / batches;
 
 	atomicAdd(&errorVector[vectorSubindex], error);
 }
@@ -213,9 +266,10 @@ __global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, f
 	@param errorVectorSize The size of @errorVector.
 	@param destinationErrorSize The size of @destinationErrorVector.
 	@param batchSize The number of training examples in a batch.
+	@param activationOperation An index in the *activationOps* array that determines which activation function to use.
 */
 __global__ void backpropogate_gpu_kernel(float * __restrict__ synapseMatrix, float * __restrict__ errorVector, float * __restrict__ destinationErrorVector, float ** __restrict__ destinationValueVector,
-	unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize) {
+	unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize, int activationOperation) {
 
 	unsigned int sourceIndex = threadIdx.x;
 	unsigned int destinationIndex = blockIdx.x;
@@ -229,7 +283,7 @@ __global__ void backpropogate_gpu_kernel(float * __restrict__ synapseMatrix, flo
 	}
 	averageDestinationValue = averageDestinationValue / ((float) batchSize);
 
-	float error = (errorVector[sourceIndex] * synapseMatrix[(sourceIndex * destinationErrorSize) + destinationIndex] * sigmoidDerivative(averageDestinationValue));
+	float error = (errorVector[sourceIndex] * synapseMatrix[(sourceIndex * destinationErrorSize) + destinationIndex] * activationDerivativeOps[activationOperation](averageDestinationValue));
 
 	atomicAdd(&destinationErrorVector[destinationIndex], error);
 }
@@ -280,8 +334,9 @@ __global__ void updateLayer_gpu_kernel(float * __restrict__ synapseMatrix, float
  * @param vectors An array of vectors allocated on the GPU.
  * @param numVectors The number of vectors in @vectors.
  * @param vectorLength The length of each vector in @vectors.
+ * @param activation The activation function to use.
  */
-void gpu_sigmoid(float **vectors, unsigned int numVectors, unsigned int vectorLength) {
+void gpu_activate(float **vectors, unsigned int numVectors, unsigned int vectorLength, Activation activation) {
 	unsigned int numThreadBlocks = numVectors;
 	unsigned int threadsPerBlock = vectorLength;
 
@@ -290,7 +345,7 @@ void gpu_sigmoid(float **vectors, unsigned int numVectors, unsigned int vectorLe
 	if (threadsPerBlock > 1024)
 		threadsPerBlock = 1024;
 
-	sigmoid_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(vectors, numVectors, vectorLength);
+	activation_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(vectors, numVectors, vectorLength, activation);
 }
 
 
@@ -303,15 +358,16 @@ void gpu_sigmoid(float **vectors, unsigned int numVectors, unsigned int vectorLe
  * @param errorVector A allocated vector on the GPU that will hold the result vector.
  * @param numVectors The number of vectors in @outputVectors.
  * @param vectorLength The length of each vector in @outputVectors, @expectedVector, and @errorVector.
+ * @param activation The activation function to use.
  */
-void gpu_calculateError(float **outputVectors, float *expectedVector, float *errorVector, unsigned int numVectors, unsigned int vectorLength) {
+void gpu_calculateError(float **outputVectors, float *expectedVector, float *errorVector, unsigned int numVectors, unsigned int vectorLength, Activation activation) {
 	unsigned int numThreadBlocks = numVectors;
 	unsigned int threadsPerBlock = vectorLength;
 
 	if (threadsPerBlock > 1024)
 		threadsPerBlock = 1024;
 
-	calculateError_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(outputVectors, expectedVector, errorVector, numVectors, vectorLength);
+	calculateError_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(outputVectors, expectedVector, errorVector, numVectors, vectorLength, activation);
 }
 
 
@@ -329,9 +385,10 @@ void gpu_calculateError(float **outputVectors, float *expectedVector, float *err
  * @param errorVectorSize The size of @errorVector.
  * @param destinationErrorSize The size of @destinationErrorVector.
  * @param batchSize The number of training examples in the current training batch. This will also be the size of @destinationValueVector.
+ * @param activation The activation function to use.
  */
 void gpu_backpropogate(float *synapseMatrix, float *errorVector, float *destinationErrorVector, float **destinationValueVector,
-	unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize) {
+	unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize, Activation activation) {
 
 	unsigned int numThreadBlocks = destinationErrorSize;
 	unsigned int numThreads = errorVectorSize;
@@ -339,7 +396,7 @@ void gpu_backpropogate(float *synapseMatrix, float *errorVector, float *destinat
 	if (numThreads > 1024)
 		numThreads = 1024;
 
-	backpropogate_gpu_kernel<<<numThreadBlocks, numThreads>>>(synapseMatrix, errorVector, destinationErrorVector, destinationValueVector, errorVectorSize, destinationErrorSize, batchSize);
+	backpropogate_gpu_kernel<<<numThreadBlocks, numThreads>>>(synapseMatrix, errorVector, destinationErrorVector, destinationValueVector, errorVectorSize, destinationErrorSize, batchSize, activation);
 }
 
 

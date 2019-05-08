@@ -1,14 +1,18 @@
 import random
 import os
 
-import ctypes
-from ctypes import *
+from ctypes import CDLL, c_uint, c_int, c_float, c_void_p, c_char_p, c_size_t, POINTER
 
 import itertools
 
 
 ANN_DLL_PATH = os.path.join(os.environ['ANN_DLL_PATH'], 'ann.dll')
-_network_ref = ctypes.CDLL(ANN_DLL_PATH)
+_network_ref = CDLL(ANN_DLL_PATH)
+
+
+
+class Activation:
+	RELU, SIGMOID = range(2)
 
 
 class NeuralNetwork(object):
@@ -146,9 +150,20 @@ class NeuralNetwork(object):
 		set_lrate(self.network_pointer, learning_rate)
 
 
+	def set_layer_activations(self, activations):
+		set_activations = _network_ref.setLayerActivations
+		set_activations.argtypes = [c_void_p, POINTER(c_int), c_uint]
+
+		input_activations = (c_int * len(activations))()
+		input_activations[:] = activations
+
+		set_activations(self.network_pointer, input_activations, len(activations))
+
+
 
 if __name__ == '__main__':
 	network = NeuralNetwork([10, 5, 5, 10], 32, 0.1)
+	network.set_layer_activations([Activation.RELU, Activation.RELU, Activation.RELU, Activation.SIGMOID])
 
 	single_input = [0.15, 0.45, 0.78, 0.04, 0.45, 0.73, 0.19, 0.11, 0.01, 0.11]
 	single_input_2 = [0.38, 0.92, 0.16, 0.63, 0.82, 0.11, 0.02, 0.73, 0.25, 0.68]

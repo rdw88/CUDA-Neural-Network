@@ -10,7 +10,6 @@
 
 #include "NeuralNetwork.h"
 #include "Util.h"
-#include "GPU.h"
 
 #include <iostream>
 #include <fstream>
@@ -31,7 +30,7 @@ NeuralNetwork::NeuralNetwork() {
 
 
 /**
-	Constructs a new neural network.
+	Constructs a new neural network. Each layer uses ReLU as the default activation function.
 
 	@param neuronsPerLayer The number of neurons per layer.
 	@param batchSize The batch size to be used in training.
@@ -115,6 +114,13 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 	}
 
 	m_ExpectedOutput = (float *) gpu_allocMemory(m_BatchSize * getOutputSize() * sizeof(float));
+
+	vector<Activation> layerActivations;
+	for (int i = 0; i < m_LayerSizes.size(); i++) {
+		layerActivations.push_back(RELU);
+	}
+
+	setLayerActivations(layerActivations);
 }
 
 
@@ -274,7 +280,7 @@ void NeuralNetwork::feedForward() {
 		}
 		
 		gpu_batchVectorMatrixMultiply(m_SynapseMatrices[i], m_ValueVectors[i - 1], m_ValueVectors[i], m_LayerSizes[i - 1], m_LayerSizes[i], m_BatchSize);
-		gpu_sigmoid(m_ValueVectors[i], m_BatchSize, m_LayerSizes[i]);
+		gpu_activate(m_ValueVectors[i], m_BatchSize, m_LayerSizes[i], m_ActivationFunctions[i]);
 	}
 }
 
@@ -283,7 +289,7 @@ void NeuralNetwork::feedForward() {
 	Calculate the error of the network based on the loaded input and expected ouputs.
 */
 void NeuralNetwork::calculateError() {
-	gpu_calculateError(getOutputLayer(), m_ExpectedOutput, m_ErrorVectors[m_ErrorVectors.size() - 1], m_BatchSize, getOutputSize());
+	gpu_calculateError(getOutputLayer(), m_ExpectedOutput, m_ErrorVectors[m_ErrorVectors.size() - 1], m_BatchSize, getOutputSize(), m_ActivationFunctions[getLayerCount() - 1]);
 }
 
 
@@ -292,7 +298,7 @@ void NeuralNetwork::calculateError() {
 */
 void NeuralNetwork::backpropogate() {
 	for (int i = getLayerCount() - 1; i > 1; i--) {
-		gpu_backpropogate(m_CpuSynapseMatrices[i][0], m_ErrorVectors[i], m_ErrorVectors[i - 1], m_ValueVectors[i - 1], m_LayerSizes[i], m_LayerSizes[i - 1], m_BatchSize);
+		gpu_backpropogate(m_CpuSynapseMatrices[i][0], m_ErrorVectors[i], m_ErrorVectors[i - 1], m_ValueVectors[i - 1], m_LayerSizes[i], m_LayerSizes[i - 1], m_BatchSize, m_ActivationFunctions[i - 1]);
 	}
 }
 
@@ -364,6 +370,9 @@ void NeuralNetwork::save(string filename) {
 
 	for (int i = 0; i < getLayerCount(); i++)
 		outputFile << m_LayerSizes[i] << endl;
+
+	for (int i = 0; i < getLayerCount(); i++)
+		outputFile << m_ActivationFunctions[i] << endl;
 
 	outputFile << m_LearningRate << endl;
 	outputFile << m_BatchSize << endl;
@@ -448,6 +457,16 @@ void NeuralNetwork::setLearningRate(float learningRate) {
 
 
 /**
+* Sets the activation function to use for each layer in the network.
+* 
+* @param activations A vector of Activations representing the activation function to use.
+*/
+void NeuralNetwork::setLayerActivations(vector<Activation> activations) {
+	m_ActivationFunctions = activations;
+}
+
+
+/**
 	The output values of the network.
 
 	@return An array of vectors containing the output values of the network for each training example provided as input.
@@ -516,6 +535,16 @@ vector<float **> NeuralNetwork::getValueVectors() {
 */
 vector<unsigned int> NeuralNetwork::getLayerSizes() {
 	return m_LayerSizes;
+}
+
+
+/**
+* The activation functions used for each layer in the network.
+* 
+* @return A vector containing the activation functions used for each layer in the network.
+*/
+vector<Activation> NeuralNetwork::getLayerActivations() {
+	return m_ActivationFunctions;
 }
 
 
@@ -605,6 +634,13 @@ NeuralNetwork *networkFromFile(string filename) {
 		layerSizes.push_back(layerSize);
 	}
 
+	vector<Activation> activations;
+	for (int i = 0; i < numLayers; i++) {
+		int activation;
+		inputFile >> activation;
+		activations.push_back(static_cast<Activation>(activation));
+	}
+
 	float learningRate;
 	inputFile >> learningRate;
 
@@ -615,6 +651,7 @@ NeuralNetwork *networkFromFile(string filename) {
 	getline(inputFile, dummy);
 
 	NeuralNetwork *network = new NeuralNetwork(layerSizes, batchSize, learningRate);
+	network->setLayerActivations(activations);
 
 	for (int i = 1; i < numLayers; i++) {
 		vector<float> matrix;

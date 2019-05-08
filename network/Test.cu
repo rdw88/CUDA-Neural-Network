@@ -11,6 +11,7 @@
 #include "NeuralNetwork.h"
 #include "GPU.h"
 
+#include <stdio.h>
 #include <assert.h>
 #include <iostream>
 #include <map>
@@ -31,11 +32,13 @@ float test_sigmoidDerivative(float x) {
 
 
 static vector<unsigned int> defaultNetworkNeuronsPerLayer = {5, 3, 2, 4};
+static vector<Activation> defaultNetworkActivations = {SIGMOID, SIGMOID, SIGMOID, SIGMOID};
 static unsigned int defaultNetworkBatchSize = 32;
 static float defaultNetworkLearningRate = 0.1f;
 
 NeuralNetwork *newDefaultNetwork() {
 	NeuralNetwork *network = new NeuralNetwork(defaultNetworkNeuronsPerLayer, defaultNetworkBatchSize, defaultNetworkLearningRate);
+	network->setLayerActivations(defaultNetworkActivations);
 	return network;
 }
 
@@ -141,9 +144,11 @@ static vector<float> newLayer2Matrix = {
 
 NeuralNetwork *newTestNetwork() {
 	vector<unsigned int> layerSizes = {3, 2, 3};
+	vector<Activation> activations = {SIGMOID, SIGMOID, SIGMOID};
 
 	NeuralNetwork *network = new NeuralNetwork(layerSizes, 2, testNetworkLearningRate);
 
+	network->setLayerActivations(activations);
 	network->setSynapseMatrix(1, layer1Matrix);
 	network->setSynapseMatrix(2, layer2Matrix);
 	network->setBiasVector(1, layer1Bias);
@@ -356,10 +361,10 @@ void test_applyWeights() {
 
 void test_train() {
 	vector<unsigned int> trainNetworkLayerSizes = { 784, 784, 500, 1000, 10 };
+	vector<Activation> layerActivations = { SIGMOID, SIGMOID, SIGMOID, SIGMOID, SIGMOID };
 
 	NeuralNetwork network(trainNetworkLayerSizes, 32, 0.1);
-
-	network.save("1.csv");
+	network.setLayerActivations(layerActivations);
 
 	vector<float> input;
 	vector<float> expectedOutput;
@@ -396,13 +401,15 @@ void test_train() {
 		float roundedOutput = roundf(networkOutput[i] * 10) / 10;
 		assert(roundedOutput == expectedOutput[i]);
 	}
-
-	network.save("2.csv");
 }
 
 
 void test_networkFromFile() {
 	NeuralNetwork *network = newTestNetwork();
+	
+	vector<Activation> activations = { RELU, RELU, SIGMOID };
+	network->setLayerActivations(activations);
+
 	network->save("test_networkFromFile.csv");
 
 	NeuralNetwork *loadedNetwork = networkFromFile("test_networkFromFile.csv");
@@ -412,6 +419,7 @@ void test_networkFromFile() {
 	assert(loadedNetwork->getSynapseMatrices().size() == network->getSynapseMatrices().size());
 	assert(loadedNetwork->getValueVectors().size() == network->getValueVectors().size());
 	assert(loadedNetwork->getLayerSizes().size() == network->getLayerSizes().size());
+	assert(loadedNetwork->getLayerActivations().size() == network->getLayerSizes().size());
 	assert(loadedNetwork->getBatchSize() == network->getBatchSize());
 	assert(loadedNetwork->getLearningRate() == network->getLearningRate());
 	assert(loadedNetwork->getBiasVectors()[0] == NULL);
@@ -420,6 +428,10 @@ void test_networkFromFile() {
 
 	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
 		assert(loadedNetwork->getLayerSizes()[i] == network->getLayerSizes()[i]);
+	}
+
+	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
+		assert(loadedNetwork->getLayerActivations()[i] == activations[i]);
 	}
 
 	for (int i = 1; i < loadedNetwork->getSynapseMatrices().size(); i++) {
@@ -455,6 +467,8 @@ void test_networkFromFile() {
 		freePinnedMemory(loadedNetworkBias);
 		freePinnedMemory(networkBias);
 	}
+
+	remove("test_networkFromFile.csv");
 }
 
 
