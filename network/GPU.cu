@@ -179,16 +179,15 @@ __device__ __forceinline__ float relu(float input) {
 
 
 /**
-	ReLU derivative implementation running on the GPU.
+	ReLU derivative implementation running on the GPU. This implementation assumes little endian byte order.
 
 	@param input The input value to perform the ReLU derivative function on.
 	@return The ReLU derivative of the input.
 */
 __device__ __forceinline__ float reluDerivative(float input) {
-	if (input > 0)
-		return 1;
+	char *rawCast = reinterpret_cast<char *>(&input);
 
-	return 0;
+	return ((rawCast[3] >> 7) & 1) ^ 1;
 }
 
 
