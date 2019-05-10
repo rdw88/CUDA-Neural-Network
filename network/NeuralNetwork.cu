@@ -198,18 +198,10 @@ void NeuralNetwork::loadInput(vector<float> input) {
 		return;
 	}
 
-	float *pinnedInputMemory = (float *) allocPinnedMemory(input.size() * sizeof(float));
-	gpu_copyMemory(pinnedInputMemory, input.data(), input.size() * sizeof(float));
-
 	/* Load input data into GPU memory */
 	for (int i = 0; i < m_BatchSize; i++) {
-		float *inputLayerBatchPointer = m_CpuValueVectors[0][i];
-		float *trainingSubset = &pinnedInputMemory[i * getInputSize()];
-
-		gpu_copyMemory(inputLayerBatchPointer, trainingSubset, getInputSize() * sizeof(float));
+		gpu_copyMemory(m_CpuValueVectors[0][i], &input[i * getInputSize()], getInputSize() * sizeof(float));
 	}
-
-	freePinnedMemory(pinnedInputMemory);
 }
 
 
@@ -224,12 +216,7 @@ void NeuralNetwork::loadExpectedOutput(vector<float> expectedOutput) {
 		return;
 	}
 
-	float *pinnedOutputMemory = (float *) allocPinnedMemory(expectedOutput.size() * sizeof(float));
-
-	gpu_copyMemory(pinnedOutputMemory, expectedOutput.data(), expectedOutput.size() * sizeof(float));
-	gpu_copyMemory(m_ExpectedOutput, pinnedOutputMemory, expectedOutput.size() * sizeof(float));
-
-	freePinnedMemory(pinnedOutputMemory);
+	gpu_copyMemory(m_ExpectedOutput, &expectedOutput[0], expectedOutput.size() * sizeof(float));
 }
 
 

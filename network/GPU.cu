@@ -179,15 +179,16 @@ __device__ __forceinline__ float relu(float input) {
 
 
 /**
-	ReLU derivative implementation running on the GPU. This implementation assumes little endian byte order.
+	ReLU derivative implementation running on the GPU.
 
 	@param input The input value to perform the ReLU derivative function on.
 	@return The ReLU derivative of the input.
 */
 __device__ __forceinline__ float reluDerivative(float input) {
-	char *rawCast = reinterpret_cast<char *>(&input);
+	if (input > 0)
+		return 1;
 
-	return ((rawCast[3] >> 7) & 1) ^ 1;
+	return 0;
 }
 
 
@@ -212,16 +213,11 @@ __device__ Op activationDerivativeOps[] = {
 	CUDA kernel that performs the activation function in parallel for the elements in the passed vectors.
 
 	@param vectors An array of vectors to perform the activation function on.
-	@param numVectors The number of vectors in @vectors.
-	@param vectorLength The length of each vector in @vectors.
 	@param activationOperation An index in the *activationOps* array that determines which activation function to use.
 */
-__global__ void activation_gpu_kernel(float ** __restrict__ vectors, unsigned int numVectors, unsigned int vectorLength, int activationOperation) {
+__global__ void activation_gpu_kernel(float ** __restrict__ vectors, int activationOperation) {
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
-
-	if (vectorIndex >= numVectors || vectorSubindex >= vectorLength)
-		return;
 
 	vectors[vectorIndex][vectorSubindex] = activationOps[activationOperation](vectors[vectorIndex][vectorSubindex]);
 }
@@ -243,9 +239,6 @@ __global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, f
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
 	unsigned int expectedVectorIndex = (vectorIndex * vectorLength) + vectorSubindex;
-
-	if (vectorIndex >= numVectors || vectorSubindex >= vectorLength)
-		return;
 
 	float batches = (float) numVectors;
 	float error = ((resultVectors[vectorIndex][vectorSubindex] - expectedVector[expectedVectorIndex]) * activationDerivativeOps[activationOperation](resultVectors[vectorIndex][vectorSubindex])) / batches;
@@ -273,16 +266,21 @@ __global__ void backpropogate_gpu_kernel(float * __restrict__ synapseMatrix, flo
 	unsigned int sourceIndex = threadIdx.x;
 	unsigned int destinationIndex = blockIdx.x;
 
-	if (destinationIndex >= destinationErrorSize || sourceIndex >= errorVectorSize)
-		return;
+	__shared__ float averageDestinationValue;
 
-	float averageDestinationValue = 0.0f;
-	for (int i = 0; i < batchSize; i++) {
-		averageDestinationValue += destinationValueVector[i][destinationIndex];
+	if (sourceIndex == 0) {
+		averageDestinationValue = 0.0f;
+		
+		for (int i = 0; i < batchSize; i++) {
+			averageDestinationValue += destinationValueVector[i][destinationIndex];
+		}
+
+		averageDestinationValue = averageDestinationValue / ((float) batchSize);
 	}
-	averageDestinationValue = averageDestinationValue / ((float) batchSize);
 
-	float error = (errorVector[sourceIndex] * synapseMatrix[(sourceIndex * destinationErrorSize) + destinationIndex] * activationDerivativeOps[activationOperation](averageDestinationValue));
+	__syncthreads();
+
+	float error = errorVector[sourceIndex] * synapseMatrix[(sourceIndex * destinationErrorSize) + destinationIndex] * activationDerivativeOps[activationOperation](averageDestinationValue);
 
 	atomicAdd(&destinationErrorVector[destinationIndex], error);
 }
@@ -344,7 +342,7 @@ void gpu_activate(float **vectors, unsigned int numVectors, unsigned int vectorL
 	if (threadsPerBlock > 1024)
 		threadsPerBlock = 1024;
 
-	activation_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(vectors, numVectors, vectorLength, activation);
+	activation_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(vectors, activation);
 }
 
 

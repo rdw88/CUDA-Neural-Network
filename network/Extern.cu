@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <stdlib.h>
+#include <algorithm>
 
 
 using namespace std;
@@ -44,13 +45,16 @@ extern "C" __declspec(dllexport) void *createNetwork(unsigned int *layerSizes, u
 
 
 extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input, float *expectedOutput) {
-	NeuralNetwork *network = getNetworkPointer(_network);
+	NeuralNetwork *network = (NeuralNetwork *) _network;
 
 	int inputLayerSize = network->getInputSize() * network->getBatchSize();
 	int outputLayerSize = network->getOutputSize() * network->getBatchSize();
 
-	vector<float> networkInput { input, input + inputLayerSize };
-	vector<float> networkOutput { expectedOutput, expectedOutput + outputLayerSize };
+	vector<float> networkInput(inputLayerSize);
+	vector<float> networkOutput(outputLayerSize);
+
+	memcpy(&networkInput[0], input, inputLayerSize * sizeof(float));
+	memcpy(&networkOutput[0], expectedOutput, outputLayerSize * sizeof(float));
 
 	network->train(networkInput, networkOutput);
 }
