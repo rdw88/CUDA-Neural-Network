@@ -93,6 +93,14 @@ class NeuralNetwork(object):
 			print('Network input length was 0, no training was completed')
 			return
 
+		if len(network_input) != self.layer_sizes[0]:
+			print('Training input length must be equal to the input layer size!')
+			return
+
+		if len(expected_output) != self.layer_sizes[-1]:
+			print('Training output length must be equal to the output layer size!')
+			return
+
 		train_network = _network_ref.trainNetwork
 		train_network.argtypes = [c_void_p, POINTER(c_float), POINTER(c_float)]
 
@@ -110,6 +118,10 @@ class NeuralNetwork(object):
 		if not self.network_pointer:
 			print('Neural network has not been initialized')
 			return list()
+
+		if len(network_input) != self.layer_sizes[0]:
+			print('Input length must be equal to the input layer size!')
+			return
 
 		get_output = _network_ref.getNetworkOutputForInput
 		get_output.argtypes = [c_void_p, POINTER(c_float), c_uint, POINTER(c_float), c_uint]
