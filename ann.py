@@ -160,6 +160,61 @@ class NeuralNetwork(object):
 		set_activations(self.network_pointer, input_activations, len(activations))
 
 
+	def set_synapse_matrix(self, layer, matrix):
+		set_matrix = _network_ref.setSynapseMatrix
+		set_matrix.argtypes = [c_void_p, c_uint, POINTER(c_float), c_uint]
+
+		input_matrix = (c_float * len(matrix))()
+		input_matrix[:] = matrix
+
+		set_matrix(self.network_pointer, layer, input_matrix, len(matrix))
+
+
+	def set_bias_vector(self, layer, vector):
+		set_bias = _network_ref.setBiasVector
+		set_bias.argtypes = [c_void_p, c_uint, POINTER(c_float), c_uint]
+
+		input_vector = (c_float * len(vector))()
+		input_vector[:] = vector
+
+		set_bias(self.network_pointer, layer, input_vector, len(vector))
+
+
+	def get_synapse_matrix(self, layer):
+		if layer == 0 or layer == len(self.layer_sizes) * -1:
+			print('WARNING: Attempted to get the synapse matrix of the input layer')
+			return None
+
+		get_matrix = _network_ref.getSynapseMatrix
+		get_matrix.argtypes = [c_void_p, c_uint, POINTER(c_float)]
+
+		output_size = self.layer_sizes[layer] * self.layer_sizes[layer - 1]
+		matrix = (c_float * output_size)()
+
+		get_matrix(self.network_pointer, layer, matrix)
+
+		return list(matrix)
+
+
+	def get_bias_vector(self, layer):
+		if layer == 0 or layer == len(self.layer_sizes) * -1:
+			print('WARNING: Attempted to get the bias vector of the input layer')
+			return None
+
+		get_bias = _network_ref.getBiasVector
+		get_bias.argtypes = [c_void_p, c_uint, POINTER(c_float)]
+
+		vector = (c_float * self.layer_sizes[layer])()
+
+		get_bias(self.network_pointer, layer, vector)
+
+		return list(vector)
+
+
+	def get_layer_count(self):
+		return len(self.layer_sizes)
+
+
 
 if __name__ == '__main__':
 	network = NeuralNetwork([10, 5, 5, 10], 32, 0.1)

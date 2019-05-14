@@ -272,6 +272,24 @@ class NeuralNetwork {
 		std::vector<float **> getValueVectors();
 
 		/**
+		 * The values in the bias vector for a layer in the network.
+		 * 
+		 * @param layer The layer index in the network.
+		 * @return A vector of values representing the bias for each neuron in the layer. The first bias vector will always be
+		 * null (the input layer).
+		 */
+		std::vector<float> getBiasVectorValues(unsigned int layer);
+
+		/**
+		 * The values in the synapse matrix for a layer in the network.
+		 * 
+		 * @param The layer index in the network.
+		 * @return A vector of values representing the weights for each synapse connecting @layer with @layer - 1. The first
+		 * synapse matrix will always be null (the input layer).
+		 */
+		std::vector<float> getSynapseMatrixValues(unsigned int layer);
+
+		/**
 			The layer sizes of the network.
 
 			@return A vector containing the sizes of each layer in the network.

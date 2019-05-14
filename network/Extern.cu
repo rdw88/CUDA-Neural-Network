@@ -110,6 +110,26 @@ extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filena
 
 
 
+extern "C" __declspec(dllexport) void setSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix, unsigned int matrixLength) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<float> matrix { synapseMatrix, synapseMatrix + matrixLength };
+
+	network->setSynapseMatrix(layer, matrix);
+}
+
+
+
+extern "C" __declspec(dllexport) void setBiasVector(void *_network, unsigned int layer, float *biasVectorRef, unsigned int vectorLength) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<float> biasVector { biasVectorRef, biasVectorRef + vectorLength };
+
+	network->setBiasVector(layer, biasVector);
+}
+
+
+
 extern "C" __declspec(dllexport) void setLearningRate(void *_network, float learningRate) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 	network->setLearningRate(learningRate);
@@ -126,4 +146,26 @@ extern "C" __declspec(dllexport) void setLayerActivations(void *_network, int *a
 	}
 
 	network->setLayerActivations(layerActivations);
+}
+
+
+
+extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<float> matrix = network->getSynapseMatrixValues(layer);
+	if (matrix.size() > 0) {
+		memcpy(synapseMatrix, &matrix[0], matrix.size() * sizeof(float));
+	}
+}
+
+
+
+extern "C" __declspec(dllexport) void getBiasVector(void *_network, unsigned int layer, float *biasVector) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<float> biasVectorValues = network->getBiasVectorValues(layer);
+	if (biasVectorValues.size() > 0) {
+		memcpy(biasVector, &biasVectorValues[0], biasVectorValues.size() * sizeof(float));
+	}
 }

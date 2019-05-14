@@ -22,9 +22,17 @@ extern "C" __declspec(dllexport) void saveNetwork(void *_network, char *filename
 
 extern "C" __declspec(dllexport) void *loadNetwork(char *filename, size_t filenameSize);
 
+extern "C" __declspec(dllexport) void setSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix, unsigned int matrixLength);
+
+extern "C" __declspec(dllexport) void setBiasVector(void *_network, unsigned int layer, float *biasVectorRef, unsigned int vectorLength);
+
 extern "C" __declspec(dllexport) void setLearningRate(void *_network, float learningRate);
 
 extern "C" __declspec(dllexport) void setLayerActivations(void *_network, int *activations, unsigned int activationSize);
+
+extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix);
+
+extern "C" __declspec(dllexport) void getBiasVector(void *_network, unsigned int layer, float *biasVector);
 
 
 #endif

@@ -326,35 +326,28 @@ void test_applyWeights() {
 	network->backpropogate();
 	network->applyWeights();
 
-	vector<float **> synapseMatrices = network->getSynapseMatrices();
-
 	vector<vector<float>> expectedMatrices = { newLayer1Matrix, newLayer2Matrix };
 
-	for (int i = 1; i < synapseMatrices.size(); i++) {
-		float **gpuBatchedSynapseMatrix = synapseMatrices[i];
-		float **cpuBatchedSynapseMatrix = (float **) allocPinnedMemory(network->getBatchSize() * sizeof(float *));
-		gpu_copyMemory(cpuBatchedSynapseMatrix, gpuBatchedSynapseMatrix, network->getBatchSize() * sizeof(float *));
-
+	for (int i = 1; i < network->getSynapseMatrices().size(); i++) {
 		unsigned int matrixSize = network->getLayerSizes()[i] * network->getLayerSizes()[i - 1];
-		float *gpuSynapseMatrix = cpuBatchedSynapseMatrix[0];
-		float *cpuSynapseMatrix = (float *) allocPinnedMemory(matrixSize * sizeof(float));
-		gpu_copyMemory(cpuSynapseMatrix, gpuSynapseMatrix, matrixSize * sizeof(float));
+		vector<float> synapseMatrix = network->getSynapseMatrixValues(i);
+
+		assert(matrixSize == synapseMatrix.size());
 
 		for (int k = 0; k < matrixSize; k++) {
-			assert(cpuSynapseMatrix[k] == expectedMatrices[i - 1][k]);
+			assert(synapseMatrix[k] == expectedMatrices[i - 1][k]);
 		}
-
-		float *gpuCopiedSynapseMatrix = cpuBatchedSynapseMatrix[1];
+		
+		/* Verify the copies of each synapse matrix used for each batch also receive the updated weights */
+		float *gpuCopiedSynapseMatrix = network->getCPUSynapseMatrices()[i][1];
 		float *cpuCopiedSynapseMatrix = (float *) allocPinnedMemory(matrixSize * sizeof(float));
 		gpu_copyMemory(cpuCopiedSynapseMatrix, gpuCopiedSynapseMatrix, matrixSize * sizeof(float));
 
 		for (int k = 0; k < matrixSize; k++) {
-			assert(cpuSynapseMatrix[k] == cpuCopiedSynapseMatrix[k]);
+			assert(synapseMatrix[k] == cpuCopiedSynapseMatrix[k]);
 		}
 
 		freePinnedMemory(cpuCopiedSynapseMatrix);
-		freePinnedMemory(cpuBatchedSynapseMatrix);
-		freePinnedMemory(cpuSynapseMatrix);
 	}
 }
 
@@ -428,44 +421,26 @@ void test_networkFromFile() {
 
 	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
 		assert(loadedNetwork->getLayerSizes()[i] == network->getLayerSizes()[i]);
-	}
-
-	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
 		assert(loadedNetwork->getLayerActivations()[i] == activations[i]);
 	}
 
-	for (int i = 1; i < loadedNetwork->getSynapseMatrices().size(); i++) {
-		int matrixSize = loadedNetwork->getLayerSizes()[i] * loadedNetwork->getLayerSizes()[i - 1];
-
-		float *loadedNetworkMatrix = (float *) allocPinnedMemory(matrixSize * sizeof(float));
-		gpu_copyMemory(loadedNetworkMatrix, loadedNetwork->getCPUSynapseMatrices()[i][0], matrixSize * sizeof(float));
-
-		float *networkMatrix = (float *) allocPinnedMemory(matrixSize * sizeof(float));
-		gpu_copyMemory(networkMatrix, network->getCPUSynapseMatrices()[i][0], matrixSize * sizeof(float));
-
-		for (int k = 0; k < matrixSize; k++) {
-			assert(loadedNetworkMatrix[k] == networkMatrix[k]);
-		}
-
-		freePinnedMemory(loadedNetworkMatrix);
-		freePinnedMemory(networkMatrix);
-	}
-
 	for (int i = 1; i < loadedNetwork->getBiasVectors().size(); i++) {
-		int biasVectorSize = loadedNetwork->getLayerSizes()[i];
+		vector<float> loadedNetworkBias = loadedNetwork->getBiasVectorValues(i);
+		vector<float> networkBias = network->getBiasVectorValues(i);
 
-		float *loadedNetworkBias = (float *) allocPinnedMemory(biasVectorSize * sizeof(float));
-		gpu_copyMemory(loadedNetworkBias, loadedNetwork->getBiasVectors()[i], biasVectorSize * sizeof(float));
+		vector<float> loadedNetworkMatrix = loadedNetwork->getSynapseMatrixValues(i);
+		vector<float> networkMatrix = network->getSynapseMatrixValues(i);
 
-		float *networkBias = (float *) allocPinnedMemory(biasVectorSize * sizeof(float));
-		gpu_copyMemory(networkBias, network->getBiasVectors()[i], biasVectorSize * sizeof(float));
+		assert(loadedNetworkBias.size() == networkBias.size());
+		assert(loadedNetworkMatrix.size() == networkMatrix.size());
 
-		for (int k = 0; k < biasVectorSize; k++) {
+		for (int k = 0; k < loadedNetworkBias.size(); k++) {
 			assert(loadedNetworkBias[k] == networkBias[k]);
 		}
 
-		freePinnedMemory(loadedNetworkBias);
-		freePinnedMemory(networkBias);
+		for (int k = 0; k < loadedNetworkMatrix.size(); k++) {
+			assert(loadedNetworkMatrix[k] == networkMatrix[k]);
+		}
 	}
 
 	remove("test_networkFromFile.csv");

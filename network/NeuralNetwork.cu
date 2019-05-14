@@ -500,7 +500,7 @@ vector<float **> NeuralNetwork::getSynapseMatrices() {
 * @return A vector of synapse matrices for each layer. Each pointer in the vector is a pointer to CPU memory space and can be
 * dereferenced to find the memory address of a batch in the GPU.
 */
-std::vector<float **> NeuralNetwork::getCPUSynapseMatrices() {
+vector<float **> NeuralNetwork::getCPUSynapseMatrices() {
 	return m_CpuSynapseMatrices;
 }
 
@@ -512,6 +512,46 @@ std::vector<float **> NeuralNetwork::getCPUSynapseMatrices() {
 */
 vector<float **> NeuralNetwork::getValueVectors() {
 	return m_ValueVectors;
+}
+
+
+/**
+* The values in the bias vector for a layer in the network.
+* 
+* @param layer The layer index in the network.
+* @return A vector of values representing the bias for each neuron in the layer. The first bias vector will always be
+* null (the input layer).
+*/
+vector<float> NeuralNetwork::getBiasVectorValues(unsigned int layer) {
+	if (layer == 0 || layer >= getLayerCount()) {
+		return vector<float>();
+	}
+
+	vector<float> biasVectorValues(m_LayerSizes[layer]);
+	gpu_copyMemory(&biasVectorValues[0], m_BiasVectors[layer], m_LayerSizes[layer] * sizeof(float));
+
+	return biasVectorValues;
+}
+
+
+/**
+* The values in the synapse matrix for a layer in the network.
+* 
+* @param The layer index in the network.
+* @return A vector of values representing the weights for each synapse connecting @layer with @layer - 1. The first
+* synapse matrix will always be null (the input layer).
+*/
+vector<float> NeuralNetwork::getSynapseMatrixValues(unsigned int layer) {
+	if (layer == 0 || layer >= getLayerCount()) {
+		return vector<float>();
+	}
+
+	unsigned int matrixSize = m_LayerSizes[layer] * m_LayerSizes[layer - 1];
+
+	vector<float> synapseMatrixValues(matrixSize);
+	gpu_copyMemory(&synapseMatrixValues[0], m_CpuSynapseMatrices[layer][0], matrixSize * sizeof(float));
+
+	return synapseMatrixValues;
 }
 
 
