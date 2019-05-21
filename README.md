@@ -8,7 +8,7 @@ An implementation of a fully connected neural network written in C++ using CUDA 
 3. Parallelization of training batches
 4. Batched output
 5. Supports assignment of activation functions for each layer
-    * ReLU
+    * ReLU (with max-threshold hyperparameter)
     * Sigmoid
 4. Save networks to disk
 5. Load networks from disk
@@ -24,15 +24,13 @@ An implementation of a fully connected neural network written in C++ using CUDA 
 ##### DLL Export for Python
 
 ```
-cd network/
-nvcc -O3 -shared -o bin/ann.dll -Iinclude/ NeuralNetwork.cu Util.cu GPU.cu Extern.cu
+./build.bat app
 ```
 
-##### Standalone
+##### Standalone Unit Tests
 
 ```
-cd network/
-nvcc -O3 -o bin/ann.exe -Iinclude/ NeuralNetwork.cu Util.cu GPU.cu Test.cu
+./build.bat test
 ```
 
 #### Example
@@ -47,7 +45,7 @@ from ann import NeuralNetwork, Activation
 network = NeuralNetwork([3, 2, 1], batch_size=2, learning_rate=0.4, output_file='file.csv')
 
 # Set activation functions for each layer
-network.set_layer_activations([Activation.RELU, Activation.RELU, Activation.SIGMOID])
+network.set_layer_activations([Activation.relu(max_threshold=100), Activation.relu(max_threshold=100), Activation.sigmoid()])
 
 # Train the network in batches (batch size set to 2)
 network.train(
