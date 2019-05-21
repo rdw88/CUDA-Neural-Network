@@ -26,13 +26,3 @@ float standardNormalRandom() {
 float randomWeight(unsigned int previousLayerSize) {
 	return standardNormalRandom() * sqrtf(2 / ((float) previousLayerSize)); // He et al. (2015) initialization
 }
-
-
-float sigmoid(float x) {
-	return 1 / (1 + exp(-x));
-}
-
-
-float sigmoidDerivative(float x) {
-	return x * (1 - x);
-}

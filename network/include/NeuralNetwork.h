@@ -96,7 +96,7 @@ class NeuralNetwork {
 		/**
 		 * The activation function to use for each layer
 		 */
-		std::vector<Activation> m_ActivationFunctions;
+		std::vector<Activation *> m_ActivationFunctions;
 		
 
 	public:

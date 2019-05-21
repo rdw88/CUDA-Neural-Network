@@ -1,7 +1,7 @@
 import random
 import os
 
-from ctypes import CDLL, c_uint, c_int, c_float, c_void_p, c_char_p, c_size_t, POINTER
+from ctypes import CDLL, c_uint, c_int, c_float, c_void_p, c_char_p, c_size_t, POINTER, Structure
 
 import itertools
 
@@ -11,8 +11,35 @@ _network_ref = CDLL(ANN_DLL_PATH)
 
 
 
-class Activation:
+class ActivationType:
 	RELU, SIGMOID = range(2)
+
+
+
+class Activation(Structure):
+	_fields_ = [
+		('activationType', c_int),
+		('maxThreshold', c_float)
+	]
+
+
+	@staticmethod
+	def relu(max_threshold=-1):
+		max_c_int = (1 << 31) - 1
+
+		activation = Activation()
+		activation.activationType = ActivationType.RELU
+		activation.maxThreshold = float(max_threshold) if max_threshold != -1 else float(max_c_int)
+
+		return activation
+
+
+	@staticmethod
+	def sigmoid():
+		activation = Activation()
+		activation.activationType = ActivationType.SIGMOID
+		return activation
+
 
 
 class NeuralNetwork(object):
@@ -93,11 +120,11 @@ class NeuralNetwork(object):
 			print('Network input length was 0, no training was completed')
 			return
 
-		if len(network_input) != self.layer_sizes[0]:
+		if len(network_input) != self.layer_sizes[0] * self.batch_size:
 			print('Training input length must be equal to the input layer size!')
 			return
 
-		if len(expected_output) != self.layer_sizes[-1]:
+		if len(expected_output) != self.layer_sizes[-1] * self.batch_size:
 			print('Training output length must be equal to the output layer size!')
 			return
 
@@ -119,7 +146,7 @@ class NeuralNetwork(object):
 			print('Neural network has not been initialized')
 			return list()
 
-		if len(network_input) != self.layer_sizes[0]:
+		if len(network_input) % self.layer_sizes[0] != 0:
 			print('Input length must be equal to the input layer size!')
 			return
 
@@ -164,10 +191,9 @@ class NeuralNetwork(object):
 
 	def set_layer_activations(self, activations):
 		set_activations = _network_ref.setLayerActivations
-		set_activations.argtypes = [c_void_p, POINTER(c_int), c_uint]
+		set_activations.argtypes = [c_void_p, POINTER(Activation), c_uint]
 
-		input_activations = (c_int * len(activations))()
-		input_activations[:] = activations
+		input_activations = (Activation * len(activations))(*activations)
 
 		set_activations(self.network_pointer, input_activations, len(activations))
 
@@ -230,7 +256,7 @@ class NeuralNetwork(object):
 
 if __name__ == '__main__':
 	network = NeuralNetwork([10, 5, 5, 10], 32, 0.1)
-	network.set_layer_activations([Activation.RELU, Activation.RELU, Activation.RELU, Activation.SIGMOID])
+	network.set_layer_activations([Activation.relu(max_threshold=5), Activation.relu(max_threshold=10), Activation.relu(max_threshold=15), Activation.sigmoid()])
 
 	single_input = [0.15, 0.45, 0.78, 0.04, 0.45, 0.73, 0.19, 0.11, 0.01, 0.11]
 	single_input_2 = [0.38, 0.92, 0.16, 0.63, 0.82, 0.11, 0.02, 0.73, 0.25, 0.68]

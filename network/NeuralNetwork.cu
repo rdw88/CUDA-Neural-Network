@@ -116,8 +116,9 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 	m_ExpectedOutput = (float *) gpu_allocMemory(m_BatchSize * getOutputSize() * sizeof(float));
 
 	vector<Activation> layerActivations;
-	for (int i = 0; i < m_LayerSizes.size(); i++) {
-		layerActivations.push_back(RELU);
+	for (int i = 0; i < getLayerCount(); i++) {
+		Activation activation = newActivation(RELU);
+		layerActivations.push_back(activation);
 	}
 
 	setLayerActivations(layerActivations);
@@ -358,8 +359,11 @@ void NeuralNetwork::save(string filename) {
 	for (int i = 0; i < getLayerCount(); i++)
 		outputFile << m_LayerSizes[i] << endl;
 
-	for (int i = 0; i < getLayerCount(); i++)
-		outputFile << m_ActivationFunctions[i] << endl;
+	vector<Activation> activations = getLayerActivations();
+	for (int i = 0; i < activations.size(); i++) {
+		outputFile << activations[i].activationType << endl;
+		outputFile << to_string(activations[i].maxThreshold) << endl;
+	}
 
 	outputFile << m_LearningRate << endl;
 	outputFile << m_BatchSize << endl;
@@ -449,7 +453,23 @@ void NeuralNetwork::setLearningRate(float learningRate) {
 * @param activations A vector of Activations representing the activation function to use.
 */
 void NeuralNetwork::setLayerActivations(vector<Activation> activations) {
-	m_ActivationFunctions = activations;
+	if (activations.size() != getLayerCount()) {
+		cout << "The count of layer activations should be equal to the layer count of the network." << endl;
+		return;
+	}
+
+	vector<Activation *> gpuActivations;
+	for (int i = 0; i < activations.size(); i++) {
+		Activation *gpuActivation = (Activation *) gpu_allocMemory(sizeof(Activation));
+		gpu_copyMemory(gpuActivation, &activations[i], sizeof(Activation));
+		gpuActivations.push_back(gpuActivation);
+	}
+
+	for (int i = 0; i < m_ActivationFunctions.size(); i++) {
+		gpu_freeMemory(m_ActivationFunctions[i]);
+	}
+
+	m_ActivationFunctions = gpuActivations;
 }
 
 
@@ -571,7 +591,15 @@ vector<unsigned int> NeuralNetwork::getLayerSizes() {
 * @return A vector containing the activation functions used for each layer in the network.
 */
 vector<Activation> NeuralNetwork::getLayerActivations() {
-	return m_ActivationFunctions;
+	vector<Activation> activations;
+
+	for (int i = 0; i < getLayerCount(); i++) {
+		Activation activation;
+		gpu_copyMemory(&activation, m_ActivationFunctions[i], sizeof(Activation));
+		activations.push_back(activation);
+	}
+
+	return activations;
 }
 
 
@@ -663,9 +691,16 @@ NeuralNetwork *networkFromFile(string filename) {
 
 	vector<Activation> activations;
 	for (int i = 0; i < numLayers; i++) {
-		int activation;
-		inputFile >> activation;
-		activations.push_back(static_cast<Activation>(activation));
+		int activationType;
+		inputFile >> activationType;
+
+		float maxThreshold;
+		inputFile >> maxThreshold;
+
+		Activation activation = newActivation(static_cast<ActivationType>(activationType));
+		activation.maxThreshold = maxThreshold;
+
+		activations.push_back(activation);
 	}
 
 	float learningRate;

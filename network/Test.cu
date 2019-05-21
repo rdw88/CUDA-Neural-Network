@@ -32,7 +32,9 @@ float test_sigmoidDerivative(float x) {
 
 
 static vector<unsigned int> defaultNetworkNeuronsPerLayer = {5, 3, 2, 4};
-static vector<Activation> defaultNetworkActivations = {SIGMOID, SIGMOID, SIGMOID, SIGMOID};
+static Activation activationSigmoid = newActivation(SIGMOID);
+static Activation activationRelu = newActivation(RELU);
+static vector<Activation> defaultNetworkActivations = {activationSigmoid, activationSigmoid, activationSigmoid, activationSigmoid};
 static unsigned int defaultNetworkBatchSize = 32;
 static float defaultNetworkLearningRate = 0.1f;
 
@@ -144,7 +146,7 @@ static vector<float> newLayer2Matrix = {
 
 NeuralNetwork *newTestNetwork() {
 	vector<unsigned int> layerSizes = {3, 2, 3};
-	vector<Activation> activations = {SIGMOID, SIGMOID, SIGMOID};
+	vector<Activation> activations = {activationSigmoid, activationSigmoid, activationSigmoid};
 
 	NeuralNetwork *network = new NeuralNetwork(layerSizes, 2, testNetworkLearningRate);
 
@@ -354,7 +356,7 @@ void test_applyWeights() {
 
 void test_train() {
 	vector<unsigned int> trainNetworkLayerSizes = { 784, 784, 500, 1000, 10 };
-	vector<Activation> layerActivations = { SIGMOID, SIGMOID, SIGMOID, SIGMOID, SIGMOID };
+	vector<Activation> layerActivations = { activationRelu, activationRelu, activationRelu, activationRelu, activationSigmoid };
 
 	NeuralNetwork network(trainNetworkLayerSizes, 32, 0.1);
 	network.setLayerActivations(layerActivations);
@@ -399,8 +401,14 @@ void test_train() {
 
 void test_networkFromFile() {
 	NeuralNetwork *network = newTestNetwork();
+
+	Activation relu = newActivation(RELU);
+	relu.maxThreshold = 10;
+
+	Activation sigmoid = newActivation(SIGMOID);
+	sigmoid.maxThreshold = 5;
 	
-	vector<Activation> activations = { RELU, RELU, SIGMOID };
+	vector<Activation> activations = { relu, relu, sigmoid };
 	network->setLayerActivations(activations);
 
 	network->save("test_networkFromFile.csv");
@@ -421,7 +429,10 @@ void test_networkFromFile() {
 
 	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
 		assert(loadedNetwork->getLayerSizes()[i] == network->getLayerSizes()[i]);
-		assert(loadedNetwork->getLayerActivations()[i] == activations[i]);
+
+		vector<Activation> layerActivations = loadedNetwork->getLayerActivations();
+		assert(layerActivations[i].activationType == activations[i].activationType);
+		assert(layerActivations[i].maxThreshold == activations[i].maxThreshold);
 	}
 
 	for (int i = 1; i < loadedNetwork->getBiasVectors().size(); i++) {

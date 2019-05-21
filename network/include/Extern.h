@@ -12,6 +12,9 @@
 #define EXTERN_H__
 
 
+#include "Activation.h"
+
+
 extern "C" __declspec(dllexport) void *createNetwork(unsigned int *layerSizes, unsigned int numLayers, unsigned int batchSize, float learningRate);
 
 extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input, float *expectedOutput);
@@ -28,7 +31,7 @@ extern "C" __declspec(dllexport) void setBiasVector(void *_network, unsigned int
 
 extern "C" __declspec(dllexport) void setLearningRate(void *_network, float learningRate);
 
-extern "C" __declspec(dllexport) void setLayerActivations(void *_network, int *activations, unsigned int activationSize);
+extern "C" __declspec(dllexport) void setLayerActivations(void *_network, Activation *activations, unsigned int activationSize);
 
 extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix);
 
