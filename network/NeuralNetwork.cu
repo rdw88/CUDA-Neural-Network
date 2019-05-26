@@ -44,13 +44,13 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 
 	m_BatchSize = batchSize;
 	m_LearningRate = learningRate;
+	m_CalcInputLayerError = false;
 
 	/* Initialize vector and matrix memory in GPU */
 
 	m_SynapseMatrices.push_back(NULL); // Input layer has no synapse matrix (no incoming synapses).
 	m_CpuSynapseMatrices.push_back(NULL);
 	m_BiasVectors.push_back(NULL); // Input layer has no bias.
-	m_ErrorVectors.push_back(NULL); // Input layer does not have error.
 
 	float **gpuInputValueVectors = (float **) gpu_allocMemory(m_BatchSize * sizeof(float *));
 	float **inputValueVectors = (float **) allocPinnedMemory(m_BatchSize * sizeof(float *)); // Input layer has values (network input)
@@ -63,6 +63,10 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 
 	m_ValueVectors.push_back(gpuInputValueVectors);
 	m_CpuValueVectors.push_back(inputValueVectors);
+
+	/* Using the error vector for the input layer is optional but supported */
+	float *inputLayerErrorVector = (float *) gpu_allocMemory(m_LayerSizes[0] * sizeof(float));
+	m_ErrorVectors.push_back(inputLayerErrorVector);
 
 	for (int i = 1; i < m_LayerSizes.size(); i++) {
 		float **valueVectors = (float **) allocPinnedMemory(m_BatchSize * sizeof(float *));
@@ -142,7 +146,7 @@ NeuralNetwork::~NeuralNetwork() {
 		gpu_freeMemory(m_BiasVectors[i]);
 	}
 
-	for (int i = 1; i < m_ErrorVectors.size(); i++) {
+	for (int i = 0; i < m_ErrorVectors.size(); i++) {
 		gpu_freeMemory(m_ErrorVectors[i]);
 	}
 
@@ -285,7 +289,9 @@ void NeuralNetwork::calculateError() {
 	Based on the calculated error of the output layer, backpropogate the error of the network to its hidden layers.
 */
 void NeuralNetwork::backpropogate() {
-	for (int i = getLayerCount() - 1; i > 1; i--) {
+	int lastLayerToCalculate = m_CalcInputLayerError ? 0 : 1;
+
+	for (int i = getLayerCount() - 1; i > lastLayerToCalculate; i--) {
 		gpu_backpropogate(m_CpuSynapseMatrices[i][0], m_ErrorVectors[i], m_ErrorVectors[i - 1], m_ValueVectors[i - 1], m_LayerSizes[i], m_LayerSizes[i - 1], m_BatchSize, m_ActivationFunctions[i - 1]);
 	}
 }
@@ -305,7 +311,7 @@ void NeuralNetwork::applyWeights() {
 		}
 	}
 
-	for (int i = 1; i < m_ErrorVectors.size(); i++) {
+	for (int i = 0; i < m_ErrorVectors.size(); i++) {
 		gpu_clearMemory(m_ErrorVectors[i], getLayerSizes()[i] * sizeof(float));
 	}
 }
@@ -470,6 +476,16 @@ void NeuralNetwork::setLayerActivations(vector<Activation> activations) {
 	}
 
 	m_ActivationFunctions = gpuActivations;
+}
+
+
+/**
+* Sets whether or not to calculate the error of the input layer
+* 
+* @param calculate Set to true if error calculation of the input layer is required.
+*/
+void NeuralNetwork::setCalcInputLayerError(bool calculate) {
+	m_CalcInputLayerError = calculate;
 }
 
 

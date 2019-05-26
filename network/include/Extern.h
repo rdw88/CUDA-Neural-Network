@@ -33,6 +33,8 @@ extern "C" __declspec(dllexport) void setLearningRate(void *_network, float lear
 
 extern "C" __declspec(dllexport) void setLayerActivations(void *_network, Activation *activations, unsigned int activationSize);
 
+extern "C" __declspec(dllexport) void setCalcInputLayerError(void *_network, bool calculate);
+
 extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix);
 
 extern "C" __declspec(dllexport) void getBiasVector(void *_network, unsigned int layer, float *biasVector);

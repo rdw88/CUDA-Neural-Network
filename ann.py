@@ -1,7 +1,7 @@
 import random
 import os
 
-from ctypes import CDLL, c_uint, c_int, c_float, c_void_p, c_char_p, c_size_t, POINTER, Structure
+from ctypes import CDLL, c_uint, c_int, c_float, c_void_p, c_char_p, c_size_t, c_bool, POINTER, Structure
 
 import itertools
 
@@ -216,6 +216,13 @@ class NeuralNetwork(object):
 		input_vector[:] = vector
 
 		set_bias(self.network_pointer, layer, input_vector, len(vector))
+
+
+	def set_calc_input_error(self, calculate):
+		set_calc = _network_ref.setCalcInputLayerError
+		set_calc.argtypes = [c_void_p, c_bool]
+
+		set_calc(self.network_pointer, calculate)
 
 
 	def get_synapse_matrix(self, layer):

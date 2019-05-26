@@ -147,6 +147,13 @@ extern "C" __declspec(dllexport) void setLayerActivations(void *_network, Activa
 
 
 
+extern "C" __declspec(dllexport) void setCalcInputLayerError(void *_network, bool calculate) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+	network->setCalcInputLayerError(calculate);
+}
+
+
+
 extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 

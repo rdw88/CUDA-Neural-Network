@@ -79,6 +79,11 @@ class NeuralNetwork {
 		float *m_ExpectedOutput;
 
 		/**
+		 * The activation function to use for each layer
+		 */
+		std::vector<Activation *> m_ActivationFunctions;
+
+		/**
 			A vector containing the number of neurons in each layer.
 		*/
 		std::vector<unsigned int> m_LayerSizes;
@@ -94,9 +99,13 @@ class NeuralNetwork {
 		float m_LearningRate;
 
 		/**
-		 * The activation function to use for each layer
+		 * Specifies whether to calculate the error for the input layer of the network during backpropogation. This is useful if
+		 * the error of this network will continued to be backpropogated to another neural network. However, turning this on requires
+		 * another iteration of backpropogation which impacts performance so it is best to have disabled if not needed.
+		 * 
+		 * Default value is false.
 		 */
-		std::vector<Activation *> m_ActivationFunctions;
+		bool m_CalcInputLayerError;
 		
 
 	public:
@@ -226,6 +235,13 @@ class NeuralNetwork {
 		 * @param activations A vector of Activations representing the activation function to use.
 		 */
 		void setLayerActivations(std::vector<Activation> activations);
+
+		/**
+		 * Sets whether or not to calculate the error of the input layer
+		 * 
+		 * @param calculate Set to true if error calculation of the input layer is required.
+		 */
+		void setCalcInputLayerError(bool calculate);
 
 		/**
 			The output values of the network.

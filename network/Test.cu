@@ -122,6 +122,13 @@ static vector<float> hiddenLayerExpectedError = {
 };
 
 
+static vector<float> inputLayerExpectedError = {
+	(hiddenLayerExpectedError[0] * layer1Matrix[0] * test_sigmoidDerivative((inputValues[0] + inputValues[3]) / 2.0f)) + (hiddenLayerExpectedError[1] * layer1Matrix[3] * test_sigmoidDerivative((inputValues[0] + inputValues[3]) / 2.0f)),
+	(hiddenLayerExpectedError[0] * layer1Matrix[1] * test_sigmoidDerivative((inputValues[1] + inputValues[4]) / 2.0f)) + (hiddenLayerExpectedError[1] * layer1Matrix[4] * test_sigmoidDerivative((inputValues[1] + inputValues[4]) / 2.0f)),
+	(hiddenLayerExpectedError[0] * layer1Matrix[2] * test_sigmoidDerivative((inputValues[2] + inputValues[5]) / 2.0f)) + (hiddenLayerExpectedError[1] * layer1Matrix[5] * test_sigmoidDerivative((inputValues[2] + inputValues[5]) / 2.0f))
+};
+
+
 static vector<float> newLayer1Matrix = {
 	(layer1Matrix[0] - (testNetworkLearningRate * hiddenLayerExpectedError[0] * ((inputValues[0] + inputValues[3]) / 2.0f))),
 	(layer1Matrix[1] - (testNetworkLearningRate * hiddenLayerExpectedError[0] * ((inputValues[1] + inputValues[4]) / 2.0f))),
@@ -183,7 +190,7 @@ void test_networkInitialization() {
 
 	assert(biasVectors[0] == NULL);
 	assert(synapseMatrices[0] == NULL);
-	assert(errorVectors[0] == NULL);
+	assert(errorVectors[0] != NULL);
 
 	for (int i = 0; i < defaultNetworkNeuronsPerLayer.size(); i++) {
 		assert(defaultNetworkNeuronsPerLayer[i] == layerSizes[i]);
@@ -320,6 +327,29 @@ void test_backpropogate() {
 }
 
 
+void test_backpropogateWithInputLayerError() {
+	NeuralNetwork *network = newTestNetwork();
+
+	network->setCalcInputLayerError(true);
+	network->feedForward();
+	network->calculateError();
+	network->backpropogate();
+
+	float *gpuInputLayerError = network->getErrorVectors()[0];
+
+	assert(gpuInputLayerError != NULL);
+
+	float *cpuInputLayerError = (float *) allocPinnedMemory(network->getLayerSizes()[0] * sizeof(float));
+	gpu_copyMemory(cpuInputLayerError, gpuInputLayerError, network->getLayerSizes()[0] * sizeof(float));
+
+	for (int i = 0; i < network->getLayerSizes()[0]; i++) {
+		assert(cpuInputLayerError[i] == inputLayerExpectedError[i]);
+	}
+
+	freePinnedMemory(cpuInputLayerError);
+}
+
+
 void test_applyWeights() {
 	NeuralNetwork *network = newTestNetwork();
 
@@ -425,7 +455,7 @@ void test_networkFromFile() {
 	assert(loadedNetwork->getLearningRate() == network->getLearningRate());
 	assert(loadedNetwork->getBiasVectors()[0] == NULL);
 	assert(loadedNetwork->getSynapseMatrices()[0] == NULL);
-	assert(loadedNetwork->getErrorVectors()[0] == NULL);
+	assert(loadedNetwork->getErrorVectors()[0] != NULL);
 
 	for (int i = 0; i < loadedNetwork->getLayerSizes().size(); i++) {
 		assert(loadedNetwork->getLayerSizes()[i] == network->getLayerSizes()[i]);
@@ -467,9 +497,10 @@ int main(void) {
 	tests["Test 3: test_feedForward"] = &test_feedForward;
 	tests["Test 4: test_calculateError"] = &test_calculateError;
 	tests["Test 5: test_backpropogate"] = &test_backpropogate;
-	tests["Test 6: test_applyWeights"] = &test_applyWeights;
-	tests["Test 7: test_networkFromFile"] = &test_networkFromFile;
-	tests["Test 8: test_train"] = &test_train;
+	tests["Test 6: test_backpropogateWithInputLayerError"] = &test_backpropogateWithInputLayerError;
+	tests["Test 7: test_applyWeights"] = &test_applyWeights;
+	tests["Test 8: test_networkFromFile"] = &test_networkFromFile;
+	tests["Test 9: test_train"] = &test_train;
 
 	for (auto const& x : tests) {
 		cout << x.first << "() ... ";
