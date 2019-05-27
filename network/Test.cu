@@ -350,14 +350,7 @@ void test_backpropogateWithInputLayerError() {
 }
 
 
-void test_applyWeights() {
-	NeuralNetwork *network = newTestNetwork();
-
-	network->feedForward();
-	network->calculateError();
-	network->backpropogate();
-	network->applyWeights();
-
+void verify_applyWeights(NeuralNetwork *network) {
 	vector<vector<float>> expectedMatrices = { newLayer1Matrix, newLayer2Matrix };
 
 	for (int i = 1; i < network->getSynapseMatrices().size(); i++) {
@@ -381,6 +374,28 @@ void test_applyWeights() {
 
 		freePinnedMemory(cpuCopiedSynapseMatrix);
 	}
+}
+
+
+void test_updateNetwork() {
+	NeuralNetwork *network = newTestNetwork();
+	
+	network->feedForward();
+	network->updateNetwork(expectedError);
+
+	verify_applyWeights(network);
+}
+
+
+void test_applyWeights() {
+	NeuralNetwork *network = newTestNetwork();
+
+	network->feedForward();
+	network->calculateError();
+	network->backpropogate();
+	network->applyWeights();
+
+	verify_applyWeights(network);
 }
 
 
@@ -499,7 +514,8 @@ int main(void) {
 	tests["Test 5: test_backpropogate"] = &test_backpropogate;
 	tests["Test 6: test_backpropogateWithInputLayerError"] = &test_backpropogateWithInputLayerError;
 	tests["Test 7: test_applyWeights"] = &test_applyWeights;
-	tests["Test 8: test_networkFromFile"] = &test_networkFromFile;
+	tests["Test 8: test_updateNetwork"] = &test_updateNetwork;
+	tests["Test 10: test_networkFromFile"] = &test_networkFromFile;
 	tests["Test 9: test_train"] = &test_train;
 
 	for (auto const& x : tests) {
@@ -507,7 +523,7 @@ int main(void) {
 
 		x.second();
 
-		cout << "done" << endl;
+		cout << "pass" << endl;
 	}
 
 	return 0;

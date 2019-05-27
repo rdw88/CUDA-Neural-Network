@@ -152,7 +152,7 @@ void gpu_batchVectorMatrixMultiply(float **matrices, float **vectors, float **re
 	@param activation The activation hyperparameters.
 	@return Sigmoid of the input value.
 */
-__device__ __forceinline__ float sigmoid(float input, Activation *activation) {
+__device__ __forceinline__ float sigmoid(float input, Activation * __restrict__ activation) {
 	return 1.0f / (1.0f + exp(-input));
 }
 
@@ -164,7 +164,7 @@ __device__ __forceinline__ float sigmoid(float input, Activation *activation) {
 	@param activation The activation hyperparameters.
 	@return The sigmoid derivative of the input value.
 */
-__device__ __forceinline__ float sigmoidDerivative(float input, Activation *activation) {
+__device__ __forceinline__ float sigmoidDerivative(float input, Activation * __restrict__ activation) {
 	return input * (1 - input);
 }
 
@@ -176,7 +176,7 @@ __device__ __forceinline__ float sigmoidDerivative(float input, Activation *acti
 	@param activation The activation hyperparameters.
 	@return ReLU of the input.
 */
-__device__ __forceinline__ float relu(float input, Activation *activation) {
+__device__ __forceinline__ float relu(float input, Activation *__restrict__ activation) {
 	if (input > activation->maxThreshold)
 		return activation->maxThreshold;
 
@@ -191,7 +191,7 @@ __device__ __forceinline__ float relu(float input, Activation *activation) {
 	@param activation The activation hyperparameters.
 	@return The ReLU derivative of the input.
 */
-__device__ __forceinline__ float reluDerivative(float input, Activation *activation) {
+__device__ __forceinline__ float reluDerivative(float input, Activation * __restrict__ activation) {
 	if (input > 0 && input < activation->maxThreshold)
 		return 1;
 
@@ -222,7 +222,7 @@ __device__ Op activationDerivativeOps[] = {
 	@param vectors An array of vectors to perform the activation function on.
 	@param activation The activation function to use along with any hyperparameters for the activation function.
 */
-__global__ void activation_gpu_kernel(float ** __restrict__ vectors, Activation *activation) {
+__global__ void activation_gpu_kernel(float ** __restrict__ vectors, Activation * __restrict__ activation) {
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
 	unsigned int activationOperation = (unsigned int) activation->activationType;
@@ -242,7 +242,7 @@ __global__ void activation_gpu_kernel(float ** __restrict__ vectors, Activation 
 	@param activation The activation function to use along with any hyperparameters for the activation function.
 */
 __global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, float * __restrict__ expectedVector, float * __restrict__ errorVector,
-	unsigned int numVectors, unsigned int vectorLength, Activation *activation) {
+	unsigned int numVectors, unsigned int vectorLength, Activation * __restrict__ activation) {
 
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
@@ -271,7 +271,7 @@ __global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, f
 	@param activation The activation function to use along with any hyperparameters for the activation function.
 */
 __global__ void backpropogate_gpu_kernel(float * __restrict__ synapseMatrix, float * __restrict__ errorVector, float * __restrict__ destinationErrorVector, float ** __restrict__ destinationValueVector,
-	unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize, Activation *activation) {
+	unsigned int errorVectorSize, unsigned int destinationErrorSize, unsigned int batchSize, Activation * __restrict__ activation) {
 
 	unsigned int sourceIndex = threadIdx.x;
 	unsigned int destinationIndex = blockIdx.x;

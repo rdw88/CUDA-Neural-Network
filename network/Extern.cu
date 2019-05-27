@@ -61,6 +61,23 @@ extern "C" __declspec(dllexport) void trainNetwork(void *_network, float *input,
 
 
 
+extern "C" __declspec(dllexport) void updateNetwork(void *_network, float *outputError, unsigned int outputErrorSize) {
+	NeuralNetwork *network = (NeuralNetwork *) _network;
+
+	if (outputErrorSize != network->getOutputSize()) {
+		cout << "ERROR: Output error size does not equal the output layer size of the network." << endl;
+		return;
+	}
+
+	vector<float> networkError(outputErrorSize);
+
+	memcpy(&networkError[0], outputError, outputErrorSize * sizeof(float));
+
+	network->updateNetwork(networkError);
+}
+
+
+
 extern "C" __declspec(dllexport) void getNetworkOutputForInput(void *_network, float *input, unsigned int inputSize, float *output, unsigned int outputSize) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 

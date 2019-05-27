@@ -187,8 +187,12 @@ class NeuralNetwork {
 
 		/**
 			A wrapper method that calls *calculateError()*, *backpropogate()*, and *applyWeights()*
+			If outputError is provided, the error vector of the output layer is set to that vector instead of calling *calculateError()*
+
+			@param outputError The error vector of the output layer. If NULL, *calculateError()* is run to calculate
+							   the error of the output layer instead.
 		*/
-		void updateNetwork();
+		void updateNetwork(std::vector<float> outputError);
 
 		/**
 			The output values of the network. This is different from *getOutputLayer()* by returning by value instead of by reference.

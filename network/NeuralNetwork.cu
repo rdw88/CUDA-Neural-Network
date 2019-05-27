@@ -66,6 +66,7 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 
 	/* Using the error vector for the input layer is optional but supported */
 	float *inputLayerErrorVector = (float *) gpu_allocMemory(m_LayerSizes[0] * sizeof(float));
+	gpu_clearMemory(inputLayerErrorVector, m_LayerSizes[0] * sizeof(float));
 	m_ErrorVectors.push_back(inputLayerErrorVector);
 
 	for (int i = 1; i < m_LayerSizes.size(); i++) {
@@ -73,10 +74,13 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 
 		for (int k = 0; k < m_BatchSize; k++) {
 			valueVectors[k] = (float *) gpu_allocMemory(m_LayerSizes[i] * sizeof(float));
+			gpu_clearMemory(valueVectors[k], m_LayerSizes[i] * sizeof(float));
 		}
 
-		float *biasVector = (float *) gpu_allocMemory(m_LayerSizes[i] * sizeof(float));
 		float *errorVector = (float *) gpu_allocMemory(m_LayerSizes[i] * sizeof(float));
+		gpu_clearMemory(errorVector, m_LayerSizes[i] * sizeof(float));
+
+		float *biasVector = (float *) gpu_allocMemory(m_LayerSizes[i] * sizeof(float));
 
 		vector<float> initialBiases(m_LayerSizes[i]);
 		for (int k = 0; k < m_LayerSizes[i]; k++) {
@@ -118,6 +122,7 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 	}
 
 	m_ExpectedOutput = (float *) gpu_allocMemory(m_BatchSize * getOutputSize() * sizeof(float));
+	gpu_clearMemory(m_ExpectedOutput, m_BatchSize * getOutputSize() * sizeof(float));
 
 	vector<Activation> layerActivations;
 	for (int i = 0; i < getLayerCount(); i++) {
@@ -188,7 +193,7 @@ void NeuralNetwork::train(vector<float> batch, vector<float> expectedOutput) {
 	loadInput(batch);
 	loadExpectedOutput(expectedOutput);
 	feedForward();
-	updateNetwork();
+	updateNetwork(vector<float>());
 }
 
 
@@ -319,9 +324,23 @@ void NeuralNetwork::applyWeights() {
 
 /**
 	A wrapper method that calls *calculateError()*, *backpropogate()*, and *applyWeights()*
+	If outputError is provided, the error vector of the output layer is set to that vector instead of calling *calculateError()*
+
+	@param outputError The error vector of the output layer. If NULL, *calculateError()* is run to calculate
+					   the error of the output layer instead.
 */
-void NeuralNetwork::updateNetwork() {
-	calculateError();
+void NeuralNetwork::updateNetwork(vector<float> outputError) {
+	if (!outputError.empty() && outputError.size() != getOutputSize()) {
+		cout << "Output Error vector size is not equal to the size of the output layer!" << endl;
+		return;
+	}
+
+	if (outputError.empty()) {
+		calculateError();
+	} else {
+		gpu_copyMemory(m_ErrorVectors[getLayerCount() - 1], &outputError[0], outputError.size() * sizeof(float));
+	}
+	
 	backpropogate();
 	applyWeights();
 }

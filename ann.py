@@ -141,6 +141,20 @@ class NeuralNetwork(object):
 		train_network(self.network_pointer, input_array, output_array)
 
 
+	def update(self, output_error):
+		if not self.network_pointer:
+			print('Neural network has not been initialized')
+			return
+
+		update_network = _network_ref.updateNetwork
+		update_network.argtypes = [c_void_p, POINTER(c_float), c_uint]
+
+		output_error_array = (c_float * len(output_error))()
+		output_error_array[:] = output_error
+
+		update_network(self.network_pointer, output_error_array, len(output_error))
+
+
 	def output(self, network_input):
 		if not self.network_pointer:
 			print('Neural network has not been initialized')
