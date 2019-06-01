@@ -12,7 +12,7 @@ _network_ref = CDLL(ANN_DLL_PATH)
 
 
 class ActivationType:
-	RELU, SIGMOID = range(2)
+	RELU, SIGMOID, SOFTMAX = range(3)
 
 
 
@@ -38,6 +38,13 @@ class Activation(Structure):
 	def sigmoid():
 		activation = Activation()
 		activation.activationType = ActivationType.SIGMOID
+		return activation
+
+
+	@staticmethod
+	def softmax():
+		activation = Activation()
+		activation.activationType = ActivationType.SOFTMAX
 		return activation
 
 

@@ -7,7 +7,8 @@
  */
 enum ActivationType {
 	RELU = 0,
-	SIGMOID = 1
+	SIGMOID = 1,
+    SOFTMAX = 2
 };
 
 

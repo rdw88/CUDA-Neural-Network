@@ -10,6 +10,7 @@ An implementation of a fully connected neural network written in C++ using CUDA 
 5. Supports assignment of activation functions for each layer
     * ReLU (with max-threshold hyperparameter)
     * Sigmoid
+    * Softmax (only supported on the output layer)
 4. Save networks to disk
 5. Load networks from disk
 6. Python interface

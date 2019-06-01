@@ -16,6 +16,7 @@
 #include <iostream>
 #include <map>
 #include <math.h>
+#include <cfloat>
 
 
 using namespace std;
@@ -31,9 +32,20 @@ float test_sigmoidDerivative(float x) {
 }
 
 
+float test_softmax(float value, float sum) {
+	return exp(value) / sum;
+}
+
+
+bool fequalf(float x, float y) {
+	return abs(x - y) < FLT_EPSILON;
+}
+
+
 static vector<unsigned int> defaultNetworkNeuronsPerLayer = {5, 3, 2, 4};
 static Activation activationSigmoid = newActivation(SIGMOID);
 static Activation activationRelu = newActivation(RELU);
+static Activation activationSoftmax = newActivation(SOFTMAX);
 static vector<Activation> defaultNetworkActivations = {activationSigmoid, activationSigmoid, activationSigmoid, activationSigmoid};
 static unsigned int defaultNetworkBatchSize = 32;
 static float defaultNetworkLearningRate = 0.1f;
@@ -106,6 +118,19 @@ static vector<float> outputLayerValues = {
 	test_sigmoid(((hiddenLayerValues[2] * layer2Matrix[0]) + (hiddenLayerValues[3] * layer2Matrix[1])) + layer2Bias[0]),
 	test_sigmoid(((hiddenLayerValues[2] * layer2Matrix[2]) + (hiddenLayerValues[3] * layer2Matrix[3])) + layer2Bias[1]),
 	test_sigmoid(((hiddenLayerValues[2] * layer2Matrix[4]) + (hiddenLayerValues[3] * layer2Matrix[5])) + layer2Bias[2])
+};
+
+static vector<float> softmaxOutputValues1 = {
+	((hiddenLayerValues[0] * layer2Matrix[0]) + (hiddenLayerValues[1] * layer2Matrix[1])) + layer2Bias[0],
+	((hiddenLayerValues[0] * layer2Matrix[2]) + (hiddenLayerValues[1] * layer2Matrix[3])) + layer2Bias[1],
+	((hiddenLayerValues[0] * layer2Matrix[4]) + (hiddenLayerValues[1] * layer2Matrix[5])) + layer2Bias[2]
+};
+
+
+static vector<float> softmaxOutputValues2 = {
+	((hiddenLayerValues[2] * layer2Matrix[0]) + (hiddenLayerValues[3] * layer2Matrix[1])) + layer2Bias[0],
+	((hiddenLayerValues[2] * layer2Matrix[2]) + (hiddenLayerValues[3] * layer2Matrix[3])) + layer2Bias[1],
+	((hiddenLayerValues[2] * layer2Matrix[4]) + (hiddenLayerValues[3] * layer2Matrix[5])) + layer2Bias[2]
 };
 
 
@@ -225,7 +250,7 @@ void test_loadInput() {
 		gpu_copyMemory(cpuInputVector, gpuInputVector, network->getInputSize() * sizeof(float));
 
 		for (int k = 0; k < network->getInputSize(); k++) {
-			assert(cpuInputVector[k] == input[k]);
+			assert(fequalf(cpuInputVector[k], input[k]));
 		}
 
 		freePinnedMemory(cpuInputVector);
@@ -256,7 +281,7 @@ void test_loadExpectedOutput() {
 
 	for (int i = 0; i < network->getBatchSize(); i++) {
 		for (int k = 0; k < output.size(); k++) {
-			assert(output[k] == cpuBatchedOutput[(i * output.size()) + k]);
+			assert(fequalf(output[k], cpuBatchedOutput[(i * output.size()) + k]));
 		}
 	}
 
@@ -264,9 +289,7 @@ void test_loadExpectedOutput() {
 }
 
 
-void test_feedForward() {
-	NeuralNetwork *network = newTestNetwork();
-
+void verify_outputValues(NeuralNetwork *network, vector<float> expectedOutput) {
 	network->feedForward();
 
 	float **batchedOutputLayer = network->getOutputLayer();
@@ -278,13 +301,19 @@ void test_feedForward() {
 		gpu_copyMemory(cpuOutputLayer, cpuBatchedOutputLayer[i], network->getOutputSize() * sizeof(float));
 
 		for (int k = 0; k < network->getOutputSize(); k++) {
-			assert(cpuOutputLayer[k] == outputLayerValues[(i * network->getOutputSize()) + k]);
+			assert(fequalf(cpuOutputLayer[k], expectedOutput[(i * network->getOutputSize()) + k]));
 		}
 
 		freePinnedMemory(cpuOutputLayer);
 	}
 
 	freePinnedMemory(cpuBatchedOutputLayer);
+}
+
+
+void test_feedForward() {
+	NeuralNetwork *network = newTestNetwork();
+	verify_outputValues(network, outputLayerValues);	
 }
 
 
@@ -299,10 +328,25 @@ void test_calculateError() {
 	gpu_copyMemory(cpuNetworkErrorVector, gpuNetworkErrorVector, network->getOutputSize() * sizeof(float));
 
 	for (int i = 0; i < network->getOutputSize(); i++) {
-		assert(cpuNetworkErrorVector[i] == expectedError[i]);
+		assert(fequalf(cpuNetworkErrorVector[i], expectedError[i]));
 	}
 
 	freePinnedMemory(cpuNetworkErrorVector);
+}
+
+
+void test_gpu_softmax() {
+	NeuralNetwork *network = newTestNetwork();
+	vector<Activation> activations = {activationSigmoid, activationSigmoid, activationSoftmax};
+
+	network->setLayerActivations(activations);
+
+	vector<float> outputValues = softmaxOutputValues1;
+	for (int i = 0; i < softmaxOutputValues2.size(); i++) {
+		outputValues.push_back(softmaxOutputValues2[i]);
+	}
+
+	verify_outputValues(network, outputValues);
 }
 
 
@@ -320,7 +364,7 @@ void test_backpropogate() {
 	gpu_copyMemory(cpuHiddenLayerError, gpuHiddenLayerError, network->getLayerSizes()[layerIndex] * sizeof(float));
 
 	for (int i = 0; i < network->getLayerSizes()[layerIndex]; i++) {
-		assert(cpuHiddenLayerError[i] == hiddenLayerExpectedError[i]);
+		assert(fequalf(cpuHiddenLayerError[i], hiddenLayerExpectedError[i]));
 	}
 
 	freePinnedMemory(cpuHiddenLayerError);
@@ -343,7 +387,7 @@ void test_backpropogateWithInputLayerError() {
 	gpu_copyMemory(cpuInputLayerError, gpuInputLayerError, network->getLayerSizes()[0] * sizeof(float));
 
 	for (int i = 0; i < network->getLayerSizes()[0]; i++) {
-		assert(cpuInputLayerError[i] == inputLayerExpectedError[i]);
+		assert(fequalf(cpuInputLayerError[i], inputLayerExpectedError[i]));
 	}
 
 	freePinnedMemory(cpuInputLayerError);
@@ -360,7 +404,7 @@ void verify_applyWeights(NeuralNetwork *network) {
 		assert(matrixSize == synapseMatrix.size());
 
 		for (int k = 0; k < matrixSize; k++) {
-			assert(synapseMatrix[k] == expectedMatrices[i - 1][k]);
+			assert(fequalf(synapseMatrix[k], expectedMatrices[i - 1][k]));
 		}
 		
 		/* Verify the copies of each synapse matrix used for each batch also receive the updated weights */
@@ -369,7 +413,7 @@ void verify_applyWeights(NeuralNetwork *network) {
 		gpu_copyMemory(cpuCopiedSynapseMatrix, gpuCopiedSynapseMatrix, matrixSize * sizeof(float));
 
 		for (int k = 0; k < matrixSize; k++) {
-			assert(synapseMatrix[k] == cpuCopiedSynapseMatrix[k]);
+			assert(fequalf(synapseMatrix[k], cpuCopiedSynapseMatrix[k]));
 		}
 
 		freePinnedMemory(cpuCopiedSynapseMatrix);
@@ -439,7 +483,7 @@ void test_train() {
 	vector<float> networkOutput = network.getOutputForInput(input);
 	for (int i = 0; i < network.getOutputSize(); i++) {
 		float roundedOutput = roundf(networkOutput[i] * 10) / 10;
-		assert(roundedOutput == expectedOutput[i]);
+		assert(fequalf(roundedOutput, expectedOutput[i]));
 	}
 }
 
@@ -477,7 +521,7 @@ void test_networkFromFile() {
 
 		vector<Activation> layerActivations = loadedNetwork->getLayerActivations();
 		assert(layerActivations[i].activationType == activations[i].activationType);
-		assert(layerActivations[i].maxThreshold == activations[i].maxThreshold);
+		assert(fequalf(layerActivations[i].maxThreshold, activations[i].maxThreshold));
 	}
 
 	for (int i = 1; i < loadedNetwork->getBiasVectors().size(); i++) {
@@ -491,11 +535,11 @@ void test_networkFromFile() {
 		assert(loadedNetworkMatrix.size() == networkMatrix.size());
 
 		for (int k = 0; k < loadedNetworkBias.size(); k++) {
-			assert(loadedNetworkBias[k] == networkBias[k]);
+			assert(fequalf(loadedNetworkBias[k], networkBias[k]));
 		}
 
 		for (int k = 0; k < loadedNetworkMatrix.size(); k++) {
-			assert(loadedNetworkMatrix[k] == networkMatrix[k]);
+			assert(fequalf(loadedNetworkMatrix[k], networkMatrix[k]));
 		}
 	}
 
@@ -503,20 +547,44 @@ void test_networkFromFile() {
 }
 
 
+void initSetupData() {
+	float sum1 = 0;
+	for (int i = 0; i < softmaxOutputValues1.size(); i++) {
+		sum1 += exp(softmaxOutputValues1[i]);
+	}
+
+	float sum2 = 0;
+	for (int i = 0; i < softmaxOutputValues2.size(); i++) {
+		sum2 += exp(softmaxOutputValues2[i]);
+	}
+
+	softmaxOutputValues1[0] = test_softmax(softmaxOutputValues1[0], sum1);
+	softmaxOutputValues1[1] = test_softmax(softmaxOutputValues1[1], sum1);
+	softmaxOutputValues1[2] = test_softmax(softmaxOutputValues1[2], sum1);
+
+	softmaxOutputValues2[0] = test_softmax(softmaxOutputValues2[0], sum2);
+	softmaxOutputValues2[1] = test_softmax(softmaxOutputValues2[1], sum2);
+	softmaxOutputValues2[2] = test_softmax(softmaxOutputValues2[2], sum2);
+}
+
+
 int main(void) {
+	initSetupData();
+
 	map<string, void (*)()> tests;
 
-	tests["Test 0: test_networkInitialization"] = &test_networkInitialization;
-	tests["Test 1: test_loadInput"] = &test_loadInput;
-	tests["Test 2: test_loadExpectedOutput"] = &test_loadExpectedOutput;
-	tests["Test 3: test_feedForward"] = &test_feedForward;
-	tests["Test 4: test_calculateError"] = &test_calculateError;
-	tests["Test 5: test_backpropogate"] = &test_backpropogate;
-	tests["Test 6: test_backpropogateWithInputLayerError"] = &test_backpropogateWithInputLayerError;
-	tests["Test 7: test_applyWeights"] = &test_applyWeights;
-	tests["Test 8: test_updateNetwork"] = &test_updateNetwork;
-	tests["Test 10: test_networkFromFile"] = &test_networkFromFile;
-	tests["Test 9: test_train"] = &test_train;
+	tests["Test 00: test_networkInitialization"] = &test_networkInitialization;
+	tests["Test 01: test_loadInput"] = &test_loadInput;
+	tests["Test 02: test_loadExpectedOutput"] = &test_loadExpectedOutput;
+	tests["Test 03: test_feedForward"] = &test_feedForward;
+	tests["Test 04: test_calculateError"] = &test_calculateError;
+	tests["Test 05: test_backpropogate"] = &test_backpropogate;
+	tests["Test 06: test_backpropogateWithInputLayerError"] = &test_backpropogateWithInputLayerError;
+	tests["Test 07: test_applyWeights"] = &test_applyWeights;
+	tests["Test 08: test_updateNetwork"] = &test_updateNetwork;
+	tests["Test 09: test_networkFromFile"] = &test_networkFromFile;
+	tests["Test 10: test_gpu_softmax"] = &test_gpu_softmax;
+	tests["Test 11: test_train"] = &test_train;
 
 	for (auto const& x : tests) {
 		cout << x.first << "() ... ";

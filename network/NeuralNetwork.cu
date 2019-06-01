@@ -483,6 +483,13 @@ void NeuralNetwork::setLayerActivations(vector<Activation> activations) {
 		return;
 	}
 
+	for (int i = 0; i < activations.size() - 1; i++) {
+		if (activations[i].activationType == SOFTMAX) {
+			cout << "Softmax activation is only supported on the output layer!" << endl;
+			return;
+		}
+	}
+
 	vector<Activation *> gpuActivations;
 	for (int i = 0; i < activations.size(); i++) {
 		Activation *gpuActivation = (Activation *) gpu_allocMemory(sizeof(Activation));

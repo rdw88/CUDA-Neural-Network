@@ -217,12 +217,44 @@ __device__ Op activationDerivativeOps[] = {
 
 
 /**
+	CUDA kernel that performs the softmax activation function in parallel for the elements in the passed vectors.
+
+	@param vectors An array of vectors to perform softmax on.
+	@param vectorLength The length of each vector in @vectors.
+*/
+__device__ void softmax_activation(float ** __restrict__ vectors, unsigned int vectorLength) {
+	unsigned int vectorIndex = blockIdx.x;
+	unsigned int vectorSubindex = threadIdx.x;
+
+	__shared__ float softmaxLayerSum;
+
+	if (vectorSubindex == 0) {
+		softmaxLayerSum = 0;
+
+		for (int i = 0; i < vectorLength; i++) {
+			softmaxLayerSum += exp(vectors[vectorIndex][i]);
+		}
+	}
+
+	__syncthreads();
+
+	vectors[vectorIndex][vectorSubindex] = exp(vectors[vectorIndex][vectorSubindex]) / softmaxLayerSum;
+}
+
+
+/**
 	CUDA kernel that performs the activation function in parallel for the elements in the passed vectors.
 
 	@param vectors An array of vectors to perform the activation function on.
+	@param vectorLength The length of each vector in @vectors.
 	@param activation The activation function to use along with any hyperparameters for the activation function.
 */
-__global__ void activation_gpu_kernel(float ** __restrict__ vectors, Activation * __restrict__ activation) {
+__global__ void activation_gpu_kernel(float ** __restrict__ vectors, unsigned int vectorLength, Activation * __restrict__ activation) {
+	if (activation->activationType == SOFTMAX) {
+		softmax_activation(vectors, vectorLength);
+		return;
+	}
+
 	unsigned int vectorIndex = blockIdx.x;
 	unsigned int vectorSubindex = threadIdx.x;
 	unsigned int activationOperation = (unsigned int) activation->activationType;
@@ -250,7 +282,12 @@ __global__ void calculateError_gpu_kernel(float ** __restrict__ resultVectors, f
 	unsigned int activationOperation = (unsigned int) activation->activationType;
 
 	float batches = (float) numVectors;
-	float activationDerivative = activationDerivativeOps[activationOperation](resultVectors[vectorIndex][vectorSubindex], activation);
+	float activationDerivative = 1;
+
+	if (activation->activationType != SOFTMAX) {
+		activationDerivative = activationDerivativeOps[activationOperation](resultVectors[vectorIndex][vectorSubindex], activation);
+	}
+
 	float error = ((resultVectors[vectorIndex][vectorSubindex] - expectedVector[expectedVectorIndex]) * activationDerivative) / batches;
 
 	atomicAdd(&errorVector[vectorSubindex], error);
@@ -337,7 +374,7 @@ __global__ void updateLayer_gpu_kernel(float * __restrict__ synapseMatrix, float
 
 
 /**
- * Perform the sigmoid function on each element in each vector in-place. The sigmoid is calculated in parallel on the GPU
+ * Perform the activation function on each element in each vector in-place. The activation function is calculated in parallel on the GPU
  * for each element.
  * 
  * @param vectors An array of vectors allocated on the GPU.
@@ -354,7 +391,7 @@ void gpu_activate(float **vectors, unsigned int numVectors, unsigned int vectorL
 	if (threadsPerBlock > 1024)
 		threadsPerBlock = 1024;
 
-	activation_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(vectors, activation);
+	activation_gpu_kernel<<<numThreadBlocks, threadsPerBlock>>>(vectors, vectorLength, activation);
 }
 
 
