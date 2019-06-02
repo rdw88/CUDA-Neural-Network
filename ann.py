@@ -277,6 +277,17 @@ class NeuralNetwork(object):
 		return list(vector)
 
 
+	def get_error_vector(self, layer):
+		get_error = _network_ref.getErrorVector
+		get_error.argtypes = [c_void_p, c_uint, POINTER(c_float)]
+
+		vector = (c_float * self.layer_sizes[layer])()
+
+		get_error(self.network_pointer, layer, vector)
+
+		return list(vector)
+
+
 	def get_layer_count(self):
 		return len(self.layer_sizes)
 

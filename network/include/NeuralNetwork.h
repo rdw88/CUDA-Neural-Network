@@ -203,6 +203,14 @@ class NeuralNetwork {
 		std::vector<float> getCurrentOutput();
 
 		/**
+		 * The current values in the error vector for a given layer that is calculated during backpropagation.
+		 * 
+		 * @param layer The layer to get the error vector for.
+		 * @return A vector containing the error of each neuron in the layer from the last run of backpropagation.
+		 */
+		std::vector<float> getErrorVectorForLayer(unsigned int layer);
+
+		/**
 			Save the current state of the neural network to a file. Saves network size, learning rate, batch size, 
 			weights, and biases. To load a network saved with this method, use *networkFromFile(std::string filename)*.
 

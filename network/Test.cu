@@ -323,15 +323,10 @@ void test_calculateError() {
 	network->feedForward();
 	network->calculateError();
 
-	float *gpuNetworkErrorVector = network->getErrorVectors()[network->getLayerCount() - 1];
-	float *cpuNetworkErrorVector = (float *) allocPinnedMemory(network->getOutputSize() * sizeof(float));
-	gpu_copyMemory(cpuNetworkErrorVector, gpuNetworkErrorVector, network->getOutputSize() * sizeof(float));
-
-	for (int i = 0; i < network->getOutputSize(); i++) {
-		assert(fequalf(cpuNetworkErrorVector[i], expectedError[i]));
+	vector<float> networkError = network->getErrorVectorForLayer(network->getLayerCount() - 1);
+	for (int i = 0; i < networkError.size(); i++) {
+		assert(fequalf(networkError[i], expectedError[i]));
 	}
-
-	freePinnedMemory(cpuNetworkErrorVector);
 }
 
 
@@ -357,17 +352,16 @@ void test_backpropogate() {
 	network->calculateError();
 	network->backpropogate();
 
-	unsigned int layerIndex = network->getLayerCount() - 2;
-
-	float *gpuHiddenLayerError = network->getErrorVectors()[layerIndex];
-	float *cpuHiddenLayerError = (float *) allocPinnedMemory(network->getLayerSizes()[layerIndex] * sizeof(float));
-	gpu_copyMemory(cpuHiddenLayerError, gpuHiddenLayerError, network->getLayerSizes()[layerIndex] * sizeof(float));
-
-	for (int i = 0; i < network->getLayerSizes()[layerIndex]; i++) {
-		assert(fequalf(cpuHiddenLayerError[i], hiddenLayerExpectedError[i]));
+	/* Verify that the input layer error is not calculated since we have not set the flag */
+	vector<float> networkError = network->getErrorVectorForLayer(0);
+	for (int i = 0; i < networkError.size(); i++) {
+		assert(networkError[i] == 0.0f);
 	}
 
-	freePinnedMemory(cpuHiddenLayerError);
+	networkError = network->getErrorVectorForLayer(network->getLayerCount() - 2);
+	for (int i = 0; i < networkError.size(); i++) {
+		assert(fequalf(networkError[i], hiddenLayerExpectedError[i]));
+	}
 }
 
 
@@ -380,17 +374,12 @@ void test_backpropogateWithInputLayerError() {
 	network->backpropogate();
 
 	float *gpuInputLayerError = network->getErrorVectors()[0];
-
 	assert(gpuInputLayerError != NULL);
 
-	float *cpuInputLayerError = (float *) allocPinnedMemory(network->getLayerSizes()[0] * sizeof(float));
-	gpu_copyMemory(cpuInputLayerError, gpuInputLayerError, network->getLayerSizes()[0] * sizeof(float));
-
-	for (int i = 0; i < network->getLayerSizes()[0]; i++) {
-		assert(fequalf(cpuInputLayerError[i], inputLayerExpectedError[i]));
+	vector<float> networkError = network->getErrorVectorForLayer(0);
+	for (int i = 0; i < networkError.size(); i++) {
+		assert(fequalf(networkError[i], inputLayerExpectedError[i]));
 	}
-
-	freePinnedMemory(cpuInputLayerError);
 }
 
 

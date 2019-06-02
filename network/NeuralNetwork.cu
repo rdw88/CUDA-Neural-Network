@@ -66,7 +66,6 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 
 	/* Using the error vector for the input layer is optional but supported */
 	float *inputLayerErrorVector = (float *) gpu_allocMemory(m_LayerSizes[0] * sizeof(float));
-	gpu_clearMemory(inputLayerErrorVector, m_LayerSizes[0] * sizeof(float));
 	m_ErrorVectors.push_back(inputLayerErrorVector);
 
 	for (int i = 1; i < m_LayerSizes.size(); i++) {
@@ -78,8 +77,6 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 		}
 
 		float *errorVector = (float *) gpu_allocMemory(m_LayerSizes[i] * sizeof(float));
-		gpu_clearMemory(errorVector, m_LayerSizes[i] * sizeof(float));
-
 		float *biasVector = (float *) gpu_allocMemory(m_LayerSizes[i] * sizeof(float));
 
 		vector<float> initialBiases(m_LayerSizes[i]);
@@ -315,10 +312,6 @@ void NeuralNetwork::applyWeights() {
 			gpu_copyMemory(m_CpuSynapseMatrices[i][k], m_CpuSynapseMatrices[i][0], m_LayerSizes[i] * m_LayerSizes[i - 1] * sizeof(float));
 		}
 	}
-
-	for (int i = 0; i < m_ErrorVectors.size(); i++) {
-		gpu_clearMemory(m_ErrorVectors[i], getLayerSizes()[i] * sizeof(float));
-	}
 }
 
 
@@ -333,6 +326,10 @@ void NeuralNetwork::updateNetwork(vector<float> outputError) {
 	if (!outputError.empty() && outputError.size() != getOutputSize()) {
 		cout << "Output Error vector size is not equal to the size of the output layer!" << endl;
 		return;
+	}
+
+	for (int i = 0; i < m_ErrorVectors.size(); i++) {
+		gpu_clearMemory(m_ErrorVectors[i], getLayerSizes()[i] * sizeof(float));
 	}
 
 	if (outputError.empty()) {
@@ -361,6 +358,25 @@ vector<float> NeuralNetwork::getCurrentOutput() {
 	}
 
 	return cpuOutput;
+}
+
+
+/**
+* The current values in the error vector for a given layer that is calculated during backpropagation.
+* 
+* @param layer The layer to get the error vector for.
+* @return A vector containing the error of each neuron in the layer from the last run of backpropagation.
+*/
+vector<float> NeuralNetwork::getErrorVectorForLayer(unsigned int layer) {
+	if (layer >= getLayerCount()) {
+		cout << "Layer " << layer << " does not exist" << endl;
+		return vector<float>();
+	}
+
+	vector<float> errorVector(m_LayerSizes[layer]);
+	gpu_copyMemory(&errorVector[0], m_ErrorVectors[layer], m_LayerSizes[layer] * sizeof(float));
+
+	return errorVector;
 }
 
 

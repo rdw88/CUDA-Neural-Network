@@ -41,5 +41,7 @@ extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned 
 
 extern "C" __declspec(dllexport) void getBiasVector(void *_network, unsigned int layer, float *biasVector);
 
+extern "C" __declspec(dllexport) void getErrorVector(void *_network, unsigned int layer, float *errorVector);
+
 
 #endif

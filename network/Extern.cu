@@ -190,3 +190,14 @@ extern "C" __declspec(dllexport) void getBiasVector(void *_network, unsigned int
 		memcpy(biasVector, &biasVectorValues[0], biasVectorValues.size() * sizeof(float));
 	}
 }
+
+
+
+extern "C" __declspec(dllexport) void getErrorVector(void *_network, unsigned int layer, float *errorVector) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<float> errorVectorValues = network->getErrorVectorForLayer(layer);
+	if (errorVectorValues.size() > 0) {
+		memcpy(errorVector, &errorVectorValues[0], errorVectorValues.size() * sizeof(float));
+	}
+}
