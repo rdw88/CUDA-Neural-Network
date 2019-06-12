@@ -101,8 +101,8 @@ class NeuralNetwork(object):
 		for i in range(num_layers):
 			layer_sizes.append(int(lines[i + 1]))
 
-		learning_rate = float(lines[num_layers + 1])
-		batch_size = int(lines[num_layers + 2])
+		learning_rate = float(lines[(num_layers * 3) + 1])
+		batch_size = int(lines[(num_layers * 3) + 2])
 
 		return {
 			'layer_sizes': layer_sizes,
