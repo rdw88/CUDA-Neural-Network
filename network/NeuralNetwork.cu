@@ -404,6 +404,7 @@ void NeuralNetwork::save(string filename) {
 	for (int i = 0; i < activations.size(); i++) {
 		outputFile << activations[i].activationType << endl;
 		outputFile << to_string(activations[i].maxThreshold) << endl;
+		outputFile << to_string(activations[i].leakyReluGradient) << endl;
 	}
 
 	outputFile << m_LearningRate << endl;
@@ -755,8 +756,12 @@ NeuralNetwork *networkFromFile(string filename) {
 		float maxThreshold;
 		inputFile >> maxThreshold;
 
+		float leakyReluGradient;
+		inputFile >> leakyReluGradient;
+
 		Activation activation = newActivation(static_cast<ActivationType>(activationType));
 		activation.maxThreshold = maxThreshold;
+		activation.leakyReluGradient = leakyReluGradient;
 
 		activations.push_back(activation);
 	}

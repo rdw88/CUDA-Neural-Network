@@ -12,6 +12,7 @@ Activation newActivation(ActivationType activationType) {
     Activation activation;
     activation.activationType = activationType;
     activation.maxThreshold = std::numeric_limits<float>::max();
+    activation.leakyReluGradient = 0;
 
     return activation;
 }

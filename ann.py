@@ -19,17 +19,19 @@ class ActivationType:
 class Activation(Structure):
 	_fields_ = [
 		('activationType', c_int),
-		('maxThreshold', c_float)
+		('maxThreshold', c_float),
+		('leakyReluGradient', c_float)
 	]
 
 
 	@staticmethod
-	def relu(max_threshold=-1):
+	def relu(max_threshold=-1, leaky_relu_gradient=0):
 		max_c_int = (1 << 31) - 1
 
 		activation = Activation()
 		activation.activationType = ActivationType.RELU
 		activation.maxThreshold = float(max_threshold) if max_threshold != -1 else float(max_c_int)
+		activation.leakyReluGradient = leaky_relu_gradient
 
 		return activation
 
@@ -295,7 +297,10 @@ class NeuralNetwork(object):
 
 if __name__ == '__main__':
 	network = NeuralNetwork([10, 5, 5, 10], 32, 0.1)
-	network.set_layer_activations([Activation.relu(max_threshold=5), Activation.relu(max_threshold=10), Activation.relu(max_threshold=15), Activation.sigmoid()])
+	network.set_layer_activations([Activation.relu(max_threshold=5, leaky_relu_gradient=0.01),
+									Activation.relu(max_threshold=10, leaky_relu_gradient=0.01),
+									Activation.relu(max_threshold=15, leaky_relu_gradient=0.01),
+									Activation.sigmoid()])
 
 	single_input = [0.15, 0.45, 0.78, 0.04, 0.45, 0.73, 0.19, 0.11, 0.01, 0.11]
 	single_input_2 = [0.38, 0.92, 0.16, 0.63, 0.82, 0.11, 0.02, 0.73, 0.25, 0.68]

@@ -177,10 +177,13 @@ __device__ __forceinline__ float sigmoidDerivative(float input, Activation * __r
 	@return ReLU of the input.
 */
 __device__ __forceinline__ float relu(float input, Activation *__restrict__ activation) {
-	if (input > activation->maxThreshold)
+	if (input >= activation->maxThreshold)
 		return activation->maxThreshold;
 
-	return fmaxf(0.0f, input);
+	if (input > 0)
+		return input;
+
+	return input * activation->leakyReluGradient;
 }
 
 
@@ -192,10 +195,13 @@ __device__ __forceinline__ float relu(float input, Activation *__restrict__ acti
 	@return The ReLU derivative of the input.
 */
 __device__ __forceinline__ float reluDerivative(float input, Activation * __restrict__ activation) {
-	if (input > 0 && input < activation->maxThreshold)
+	if (input >= activation->maxThreshold)
+		return 0;
+
+	if (input > 0)
 		return 1;
 
-	return 0;
+	return activation->leakyReluGradient;
 }
 
 

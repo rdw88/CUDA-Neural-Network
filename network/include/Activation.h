@@ -18,6 +18,7 @@ enum ActivationType {
 typedef struct Activation {
     ActivationType activationType;
     float maxThreshold;
+    float leakyReluGradient;
 } Activation;
 
 
