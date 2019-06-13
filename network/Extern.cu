@@ -171,6 +171,13 @@ extern "C" __declspec(dllexport) void setCalcInputLayerError(void *_network, boo
 
 
 
+extern "C" __declspec(dllexport) void setLossFunction(void *_network, LossFunction lossFunction) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+	network->setLossFunction(lossFunction);
+}
+
+
+
 extern "C" __declspec(dllexport) void getSynapseMatrix(void *_network, unsigned int layer, float *synapseMatrix) {
 	NeuralNetwork *network = getNetworkPointer(_network);
 
@@ -199,5 +206,16 @@ extern "C" __declspec(dllexport) void getErrorVector(void *_network, unsigned in
 	vector<float> errorVectorValues = network->getErrorVectorForLayer(layer);
 	if (errorVectorValues.size() > 0) {
 		memcpy(errorVector, &errorVectorValues[0], errorVectorValues.size() * sizeof(float));
+	}
+}
+
+
+
+extern "C" __declspec(dllexport) void getTotalError(void *_network, float *totalError) {
+	NeuralNetwork *network = getNetworkPointer(_network);
+
+	vector<float> error = network->getTotalError();
+	if (error.size() > 0) {
+		memcpy(totalError, &error[0], error.size() * sizeof(float));
 	}
 }

@@ -106,6 +106,22 @@ class NeuralNetwork {
 		 * Default value is false.
 		 */
 		bool m_CalcInputLayerError;
+
+		/**
+		 * The loss function in use when calculating the total error of the network. Useful for tracking the performance of the network
+		 * as it's training but causes a degradation in training speed. A value of NO_LOSS will stop the calculation of the network's
+		 * total error during training.
+		 * 
+		 * Default value is NO_LOSS.
+		 */
+		LossFunction m_LossFunction;
+
+		/**
+		 * A vector containing the total error of the network on the last training run. Each entry in the vector represents the
+		 * total error of the network for the n'th batch in the last training run. This vector will only be populated if a loss
+		 * function has been set for the network (i.e. not NO_LOSS).
+		 */
+		std::vector<float> m_TotalError;
 		
 
 	public:
@@ -171,7 +187,8 @@ class NeuralNetwork {
 		void feedForward();
 
 		/**
-			Calculate the error of the network based on the loaded input and expected ouputs.
+			Calculate the error of the network based on the loaded input and expected outputs. If a loss function is set using *setLossFunction()*,
+			also calculate the total error of the network.
 		*/
 		void calculateError();
 
@@ -256,6 +273,14 @@ class NeuralNetwork {
 		void setCalcInputLayerError(bool calculate);
 
 		/**
+		 * Sets the loss function to use when calculating the total error of the network after each training run. A value of
+		 * NO_LOSS will stop the loss calculation during training.
+		 * 
+		 * @param lossFunction The loss function to use when calculating the total error.
+		 */
+		void setLossFunction(LossFunction lossFunction);
+
+		/**
 			The output values of the network.
 
 			@return An array of vectors containing the output values of the network for each training example provided as input.
@@ -316,6 +341,14 @@ class NeuralNetwork {
 		 * synapse matrix will always be null (the input layer).
 		 */
 		std::vector<float> getSynapseMatrixValues(unsigned int layer);
+
+		/**
+		 * The total error of the last training run for each batch. A loss function must be set for this vector to be populated
+		 * using *setLossFunction()*.
+		 * 
+		 * @return A vector containing the total error of the network for each batch in the last training run.
+		 */
+		std::vector<float> getTotalError();
 
 		/**
 			The layer sizes of the network.

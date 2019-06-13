@@ -380,6 +380,33 @@ __global__ void updateLayer_gpu_kernel(float * __restrict__ synapseMatrix, float
 
 
 /**
+	CUDA kernel that calculates the total error of each batch in a training run. Each neuron in a given batch has its
+	error calculated in parallel.
+
+	@param outputLayerValues The output layer values for each batch.
+	@param expectedOutput The expected output values for each batch.
+	@param totalErrorValues A vector used to store the resulting error for each batch.
+	@param outputLayerSize The layer size of the output layer.
+	@param lossFunction The loss function to use.
+*/
+__global__ void calculateTotalError_gpu_kernel(float ** __restrict__ outputLayerValues, float * __restrict__ expectedOutput,
+	float * __restrict__ totalErrorValues, unsigned int outputLayerSize, LossFunction lossFunction) {
+
+	unsigned int batchIndex = blockIdx.x;
+	unsigned int neuronIndex = threadIdx.x;
+	unsigned int expectedOutputIndex = (batchIndex * outputLayerSize) + neuronIndex;
+
+	float error = 0;
+
+	if (lossFunction == MEAN_SQUARED_ERROR) {
+		error = powf((expectedOutput[expectedOutputIndex] - outputLayerValues[batchIndex][neuronIndex]), 2.0f) / ((float) outputLayerSize);
+	}
+
+	atomicAdd(&totalErrorValues[batchIndex], error);
+}
+
+
+/**
  * Perform the activation function on each element in each vector in-place. The activation function is calculated in parallel on the GPU
  * for each element.
  * 
@@ -473,4 +500,31 @@ void gpu_updateLayer(float *synapseMatrix, float **valueVectors, float *errorVec
 		numThreads = 1024;
 
 	updateLayer_gpu_kernel<<<numThreadBlocks, numThreads>>>(synapseMatrix, valueVectors, errorVector, biasVector, layerSize, previousLayerSize, batchSize, learningRate);
+}
+
+
+/**
+ * Calculates the total error of the network based on the current values loaded into the expected output and output layer vectors in the GPU.
+ * 
+ * @param outputLayerValues The values of the output layer.
+ * @param expectedOutput The expected output for each batch.
+ * @param totalErrorValues Should be an array of values allocated on the CPU with length @batchSize where the result will be stored.
+ * @param outputLayerSize The size of the output layer.
+ * @param batchSize The batch size of the network.
+ * @param lossFunction The loss function to use.
+ */
+void gpu_calculateTotalError(float **outputLayerValues, float *expectedOutput, float *totalErrorValues, unsigned int outputLayerSize, unsigned int batchSize, LossFunction lossFunction) {
+	unsigned int numThreadBlocks = batchSize;
+	unsigned int numThreads = outputLayerSize;
+
+	if (numThreads > 1024)
+		numThreads = 1024;
+
+	float *gpuErrorValues = (float *) gpu_allocMemory(batchSize * sizeof(float));
+	gpu_clearMemory(gpuErrorValues, batchSize * sizeof(float));
+
+	calculateTotalError_gpu_kernel<<<numThreadBlocks, numThreads>>>(outputLayerValues, expectedOutput, gpuErrorValues, outputLayerSize, lossFunction);
+
+	gpu_copyMemory(totalErrorValues, gpuErrorValues, batchSize * sizeof(float));
+	gpu_freeMemory(gpuErrorValues);
 }

@@ -42,6 +42,11 @@ bool fequalf(float x, float y) {
 }
 
 
+float squaredError(float x, float y) {
+	return powf(x - y, 2.0);
+}
+
+
 static vector<unsigned int> defaultNetworkNeuronsPerLayer = {5, 3, 2, 4};
 static Activation activationSigmoid = newActivation(SIGMOID);
 static Activation activationRelu = newActivation(RELU);
@@ -118,6 +123,11 @@ static vector<float> outputLayerValues = {
 	test_sigmoid(((hiddenLayerValues[2] * layer2Matrix[0]) + (hiddenLayerValues[3] * layer2Matrix[1])) + layer2Bias[0]),
 	test_sigmoid(((hiddenLayerValues[2] * layer2Matrix[2]) + (hiddenLayerValues[3] * layer2Matrix[3])) + layer2Bias[1]),
 	test_sigmoid(((hiddenLayerValues[2] * layer2Matrix[4]) + (hiddenLayerValues[3] * layer2Matrix[5])) + layer2Bias[2])
+};
+
+static vector<float> expectedTotalError = {
+	(squaredError(outputLayerValues[0], expectedOutput[0]) + squaredError(outputLayerValues[1], expectedOutput[1]) + squaredError(outputLayerValues[2], expectedOutput[2])) / 3.0f,
+	(squaredError(outputLayerValues[3], expectedOutput[3]) + squaredError(outputLayerValues[4], expectedOutput[4]) + squaredError(outputLayerValues[5], expectedOutput[5])) / 3.0f
 };
 
 static vector<float> softmaxOutputValues1 = {
@@ -432,6 +442,24 @@ void test_applyWeights() {
 }
 
 
+void test_mse_loss() {
+	NeuralNetwork *network = newTestNetwork();
+
+	network->setLossFunction(MEAN_SQUARED_ERROR);
+	network->feedForward();
+	network->calculateError();
+
+	vector<float> totalError = network->getTotalError();
+
+	assert(totalError.size() == network->getBatchSize());
+	assert(totalError.size() == expectedTotalError.size());
+
+	for (int i = 0; i < totalError.size(); i++) {
+		assert(fequalf(totalError[i], expectedTotalError[i]));
+	}
+}
+
+
 void test_train() {
 	vector<unsigned int> trainNetworkLayerSizes = { 784, 784, 500, 1000, 10 };
 	vector<Activation> layerActivations = { activationRelu, activationRelu, activationRelu, activationRelu, activationSigmoid };
@@ -573,7 +601,8 @@ int main(void) {
 	tests["Test 08: test_updateNetwork"] = &test_updateNetwork;
 	tests["Test 09: test_networkFromFile"] = &test_networkFromFile;
 	tests["Test 10: test_gpu_softmax"] = &test_gpu_softmax;
-	tests["Test 11: test_train"] = &test_train;
+	tests["Test 11: test_mse_loss"] = &test_mse_loss;
+	tests["Test 12: test_train"] = &test_train;
 
 	for (auto const& x : tests) {
 		cout << x.first << "() ... ";

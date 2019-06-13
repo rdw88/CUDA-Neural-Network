@@ -45,6 +45,7 @@ NeuralNetwork::NeuralNetwork(vector<unsigned int> neuronsPerLayer, unsigned int 
 	m_BatchSize = batchSize;
 	m_LearningRate = learningRate;
 	m_CalcInputLayerError = false;
+	m_LossFunction = NO_LOSS;
 
 	/* Initialize vector and matrix memory in GPU */
 
@@ -280,10 +281,15 @@ void NeuralNetwork::feedForward() {
 
 
 /**
-	Calculate the error of the network based on the loaded input and expected ouputs.
+	Calculate the error of the network based on the loaded input and expected outputs. If a loss function is set using *setLossFunction()*,
+	also calculate the total error of the network.
 */
 void NeuralNetwork::calculateError() {
 	gpu_calculateError(getOutputLayer(), m_ExpectedOutput, m_ErrorVectors[m_ErrorVectors.size() - 1], m_BatchSize, getOutputSize(), m_ActivationFunctions[getLayerCount() - 1]);
+
+	if (m_LossFunction != NO_LOSS) {
+		gpu_calculateTotalError(getOutputLayer(), m_ExpectedOutput, &m_TotalError[0], getOutputSize(), m_BatchSize, m_LossFunction);
+	}
 }
 
 
@@ -533,6 +539,18 @@ void NeuralNetwork::setCalcInputLayerError(bool calculate) {
 
 
 /**
+* Sets the loss function to use when calculating the total error of the network after each training run. A value of
+* NO_LOSS will stop the loss calculation during training.
+* 
+* @param lossFunction The loss function to use when calculating the total error.
+*/
+void NeuralNetwork::setLossFunction(LossFunction lossFunction) {
+	m_LossFunction = lossFunction;
+	m_TotalError = vector<float>(m_BatchSize);
+}
+
+
+/**
 	The output values of the network.
 
 	@return An array of vectors containing the output values of the network for each training example provided as input.
@@ -631,6 +649,17 @@ vector<float> NeuralNetwork::getSynapseMatrixValues(unsigned int layer) {
 	gpu_copyMemory(&synapseMatrixValues[0], m_CpuSynapseMatrices[layer][0], matrixSize * sizeof(float));
 
 	return synapseMatrixValues;
+}
+
+
+/**
+* The total error of the last training run for each batch. A loss function must be set for this vector to be populated
+* using *setLossFunction()*.
+* 
+* @return A vector containing the total error of the network for each batch in the last training run.
+*/
+vector<float> NeuralNetwork::getTotalError() {
+	return m_TotalError;
 }
 
 

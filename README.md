@@ -9,20 +9,23 @@ An implementation of a fully connected neural network written in C++ using CUDA 
 4. Batched output
 5. Supports assignment of activation functions for each layer
     * ReLU (with max-threshold hyperparameter)
+    * Leaky ReLU
     * Sigmoid
     * Softmax (only supported on the output layer)
-4. Save networks to disk
-5. Load networks from disk
-6. Python interface
+6. Track the error of the network during training to validate convergence
+7. Save networks to disk
+8. Load networks from disk
+9. Python interface
 
 #### Requirements
 
 * Nvidia CUDA Toolkit (NVCC)
 * Nvidia cuBLAS library
+* Python 3.6+ (for python interface)
 
 #### Building
 
-##### DLL Export for Python
+##### DLL Export for Python Interface
 
 ```
 ./build.bat app
@@ -37,7 +40,7 @@ An implementation of a fully connected neural network written in C++ using CUDA 
 #### Example
 
 ```python
-from ann import NeuralNetwork, Activation
+from ann import NeuralNetwork, Activation, LossFunction
 
 # Create a new neural network with 1 hidden layer. Input layer size = 3, Hidden layer size = 2, Output layer size = 1
 # Set the batch size of the network to 2
@@ -47,6 +50,9 @@ network = NeuralNetwork([3, 2, 1], batch_size=2, learning_rate=0.4, output_file=
 
 # Set activation functions for each layer
 network.set_layer_activations([Activation.relu(max_threshold=100), Activation.relu(max_threshold=100), Activation.sigmoid()])
+
+# Set the loss function to use when calculating the error of the network
+network.set_loss_function(LossFunction.MEAN_SQUARED_ERROR)
 
 # Train the network in batches (batch size set to 2)
 network.train(

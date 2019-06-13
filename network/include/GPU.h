@@ -13,6 +13,7 @@
 
 
 #include "Activation.h"
+#include "Error.h"
 
 
 /**
@@ -156,6 +157,19 @@ void gpu_backpropogate(float *synapseMatrix, float *errorVector, float *destinat
  * @param learningRate The learning rate of the network.
  */
 void gpu_updateLayer(float *synapseMatrix, float **valueVectors, float *errorVector, float *biasVector, unsigned int layerSize, unsigned int previousLayerSize, unsigned int batchSize, float learningRate);
+
+
+/**
+ * Calculates the total error of the network based on the current values loaded into the expected output and output layer vectors in the GPU.
+ * 
+ * @param outputLayerValues The values of the output layer.
+ * @param expectedOutput The expected output for each batch.
+ * @param totalErrorValues Should be an array of values allocated on the CPU with length @batchSize where the result will be stored.
+ * @param outputLayerSize The size of the output layer.
+ * @param batchSize The batch size of the network.
+ * @param lossFunction The loss function to use.
+ */
+void gpu_calculateTotalError(float **outputLayerValues, float *expectedOutput, float *totalErrorValues, unsigned int outputLayerSize, unsigned int batchSize, LossFunction lossFunction);
 
 
 #endif

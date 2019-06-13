@@ -51,6 +51,11 @@ class Activation(Structure):
 
 
 
+class LossFunction:
+	NO_LOSS, MEAN_SQUARED_ERROR = range(2)
+
+
+
 class NeuralNetwork(object):
 	def __init__(self, layer_sizes, batch_size, learning_rate, existing_network=None, output_file=None):
 		if existing_network:
@@ -248,6 +253,13 @@ class NeuralNetwork(object):
 		set_calc(self.network_pointer, calculate)
 
 
+	def set_loss_function(self, loss_function):
+		set_loss = _network_ref.setLossFunction
+		set_loss.argtypes = [c_void_p, c_int]
+
+		set_loss(self.network_pointer, loss_function)
+
+
 	def get_synapse_matrix(self, layer):
 		if layer == 0 or layer == len(self.layer_sizes) * -1:
 			print('WARNING: Attempted to get the synapse matrix of the input layer')
@@ -290,6 +302,17 @@ class NeuralNetwork(object):
 		return list(vector)
 
 
+	def get_total_error(self):
+		get_error = _network_ref.getTotalError
+		get_error.argtypes = [c_void_p, POINTER(c_float)]
+
+		error_vector = (c_float * self.batch_size)()
+
+		get_error(self.network_pointer, error_vector)
+
+		return list(error_vector)
+
+
 	def get_layer_count(self):
 		return len(self.layer_sizes)
 
@@ -301,6 +324,8 @@ if __name__ == '__main__':
 									Activation.relu(max_threshold=10, leaky_relu_gradient=0.01),
 									Activation.relu(max_threshold=15, leaky_relu_gradient=0.01),
 									Activation.sigmoid()])
+	
+	network.set_loss_function(LossFunction.MEAN_SQUARED_ERROR)
 
 	single_input = [0.15, 0.45, 0.78, 0.04, 0.45, 0.73, 0.19, 0.11, 0.01, 0.11]
 	single_input_2 = [0.38, 0.92, 0.16, 0.63, 0.82, 0.11, 0.02, 0.73, 0.25, 0.68]
@@ -333,3 +358,6 @@ if __name__ == '__main__':
 
 	for i, item in enumerate(batched_output):
 		print('%.1f' % item, expected_batched_output[i])
+
+	network_error = network.get_total_error()
+	print('Network error:', network_error[0])
